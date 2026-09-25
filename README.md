@@ -11,7 +11,7 @@ A desktop application for signing PDFs by hand: open a document, place a signatu
 
 ```
 misign/
-├── .github/workflows/   # ci.yml, deploy-dev.yml, deploy-prod.yml
+├── .github/workflows/   # ci.yml, codeql.yml, deploy-dev.yml, deploy-prod.yml
 ├── .devcontainer/       # Docker development environment
 ├── docs/adr/            # architecture decision records
 ├── scripts/             # development tools (Qt installation)
@@ -67,7 +67,7 @@ ctest --preset debug -L unit      # unit tests only
 ./build/debug/src/ui/misign       # run the application (build-container/ in the dev container)
 ```
 
-Use the `release` preset for an optimized build. Pass `-DMISIGN_WARNINGS_AS_ERRORS=ON` to fail on compiler warnings.
+Use the `release` preset for an optimized build. Pass `-DMISIGN_WARNINGS_AS_ERRORS=ON` to fail on compiler warnings, and `-DMISIGN_REQUIRE_TEST_TOOLS=ON` to fail the configuration when `qpdf` or Python 3 is missing instead of skipping their tests (CI sets both).
 
 ## Contributing
 
