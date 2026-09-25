@@ -1,0 +1,68 @@
+name: Set up build dependencies
+description: >
+  Install the system packages, Qt (at the version pinned in scripts/install_qt.py)
+  and PoDoFo built from source, both cached, then export CMAKE_PREFIX_PATH.
+  Mirrors .devcontainer/Dockerfile: keep both in sync.
+
+inputs:
+  podofo-version:
+    description: PoDoFo release to build (Ubuntu 24.04 only ships 0.9.8)
+    default: "1.1.2"
+  aqtinstall-version:
+    description: aqtinstall release used by scripts/install_qt.py
+    default: "3.3.0"
+
+runs:
+  using: composite
+  steps:
+    - name: Install system packages
+      shell: bash
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y --no-install-recommends \
+          ninja-build \
+          libgl-dev libegl-dev libxkbcommon-dev libxkbcommon-x11-0 libfontconfig1 libdbus-1-3 \
+          libxcb-cursor0 libxcb-icccm4 libxcb-image0 libxcb-keysyms1 libxcb-randr0 \
+          libxcb-render-util0 libxcb-shape0 libxcb-xkb1 \
+          libfreetype-dev libssl-dev libxml2-dev zlib1g-dev libfontconfig-dev \
+          libjpeg-dev libpng-dev libtiff-dev \
+          qpdf
+
+    - name: Restore Qt
+      id: qt-cache
+      uses: actions/cache@v6
+      with:
+        path: ~/Qt
+        key: qt-${{ runner.os }}-${{ hashFiles('scripts/install_qt.py') }}-aqt${{ inputs.aqtinstall-version }}
+
+    - name: Install Qt
+      if: steps.qt-cache.outputs.cache-hit != 'true'
+      shell: bash
+      run: |
+        python3 -m venv "$RUNNER_TEMP/aqt"
+        "$RUNNER_TEMP/aqt/bin/pip" install --quiet aqtinstall==${{ inputs.aqtinstall-version }}
+        "$RUNNER_TEMP/aqt/bin/python" scripts/install_qt.py --output-dir ~/Qt
+
+    - name: Restore PoDoFo
+      id: podofo-cache
+      uses: actions/cache@v6
+      with:
+        path: ~/podofo
+        key: podofo-${{ inputs.podofo-version }}-${{ runner.os }}-${{ runner.arch }}-ubuntu24.04
+
+    - name: Build PoDoFo
+      if: steps.podofo-cache.outputs.cache-hit != 'true'
+      shell: bash
+      run: |
+        git clone --depth 1 --branch ${{ inputs.podofo-version }} https://github.com/podofo/podofo.git "$RUNNER_TEMP/podofo"
+        cmake -S "$RUNNER_TEMP/podofo" -B "$RUNNER_TEMP/podofo/build" -G Ninja \
+          -DCMAKE_BUILD_TYPE=Release -DPODOFO_BUILD_LIB_ONLY=ON -DCMAKE_INSTALL_PREFIX="$HOME/podofo"
+        cmake --build "$RUNNER_TEMP/podofo/build"
+        cmake --install "$RUNNER_TEMP/podofo/build"
+
+    - name: Export CMAKE_PREFIX_PATH
+      shell: bash
+      run: |
+        qt_prefix="$(python3 scripts/install_qt.py --output-dir ~/Qt --print-prefix)"
+        echo "CMAKE_PREFIX_PATH=$qt_prefix:$HOME/podofo" >> "$GITHUB_ENV"
+        echo "LD_LIBRARY_PATH=$HOME/podofo/lib${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}" >> "$GITHUB_ENV"

@@ -13,6 +13,7 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 
 option(MISIGN_BUILD_TESTS "Build the unit and integration tests" ON)
 option(MISIGN_WARNINGS_AS_ERRORS "Treat compiler warnings as errors" OFF)
+option(MISIGN_REQUIRE_TEST_TOOLS "Fail the configuration when qpdf or Python 3 is missing, instead of skipping their tests" OFF)
 
 list(APPEND CMAKE_MODULE_PATH "${PROJECT_SOURCE_DIR}/cmake")
 include(MisignWarnings)

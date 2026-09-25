@@ -1,0 +1,41 @@
+# CodeQL analysis of the C++ code (ADR 0004): on pull requests and every week.
+name: CodeQL
+
+on:
+  pull_request:
+    branches: [dev, main]
+  schedule:
+    - cron: "17 4 * * 1"
+  workflow_dispatch:
+
+concurrency:
+  group: codeql-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  analyze:
+    name: CodeQL (C++)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      security-events: write
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: ./.github/actions/setup-build-deps
+
+      - uses: github/codeql-action/init@v4
+        with:
+          languages: c-cpp
+          build-mode: manual
+
+      - name: Build
+        run: cmake --preset debug && cmake --build --preset debug
+
+      - uses: github/codeql-action/analyze@v4
+        with:
+          category: /language:c-cpp
