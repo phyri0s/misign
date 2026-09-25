@@ -1,0 +1,44 @@
+# CMake builds
+build/
+build-*/
+out/
+cmake-build-*/
+CMakeUserPresets.json
+compile_commands.json
+
+# Qt
+*.qmlc
+*.jsc
+*.qm
+moc_*.cpp
+qrc_*.cpp
+ui_*.h
+.qt/
+.rcc/
+
+# Objects and binaries
+*.o
+*.obj
+*.a
+*.lib
+*.so
+*.dll
+*.exe
+*.pdb
+
+# Editors
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json
+.idea/
+*.swp
+
+# System
+.DS_Store
+Thumbs.db
+
+# Test outputs
+tests/**/output/
+
+# Local Claude Code instructions
+CLAUDE.md
