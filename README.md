@@ -11,9 +11,10 @@ A desktop application for signing PDFs by hand: open a document, place a signatu
 
 ```
 misign/
-├── .github/workflows/   # ci.yml, codeql.yml, deploy-dev.yml, deploy-prod.yml
+├── .github/workflows/   # ci, codeql, pr-title, package, deploy-dev, deploy-prod
 ├── .devcontainer/       # Docker development environment
 ├── docs/adr/            # architecture decision records
+├── packaging/           # desktop file and icon
 ├── scripts/             # development tools (Qt installation)
 ├── src/
 │   ├── domain/          # strokes, smoothing, coordinates
@@ -27,6 +28,10 @@ misign/
 ├── CHANGELOG.md
 └── README.md
 ```
+
+## Download
+
+Installers are published on the [GitHub Releases](https://github.com/phyri0s/misign/releases) page: an NSIS installer for Windows (`Misign-<version>-windows-x64-setup.exe`) and an AppImage for Linux (`Misign-<version>-linux-x86_64.AppImage`, make it executable and run it). `-dev.N` versions are pre-releases built from the `dev` branch. They are not code-signed yet: Windows shows a SmartScreen warning.
 
 ## Development
 
