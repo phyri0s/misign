@@ -45,3 +45,6 @@ CLAUDE.md
 
 # aqtinstall
 aqtinstall.log
+
+# Python
+__pycache__/

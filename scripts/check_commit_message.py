@@ -10,8 +10,12 @@ and in CI, on every non-merge commit of a pull request:
     check_commit_message.py --range origin/dev..HEAD
 
 In range mode the sign-off must also match the commit author, like the DCO
-GitHub app. Commits authored by bots (Dependabot) are exempt from the sign-off.
+GitHub app, and fixup!/squash!/amend! commits are rejected: they must be squashed
+before the merge. Merge commits need no sign-off, and commits authored by bots
+(Dependabot) are exempt from the sign-off and the subject length.
 """
+
+from __future__ import annotations
 
 import argparse
 import re
@@ -21,8 +25,11 @@ from pathlib import Path
 
 TYPES = ("build", "chore", "ci", "docs", "feat", "fix", "perf", "refactor", "revert", "style", "test")
 SUBJECT = re.compile(rf"^(?:{'|'.join(TYPES)})(?:\([a-z0-9._/-]+\))?!?: \S")
-# Messages written by git itself, and the autosquash prefixes used before a rebase.
-GIT_GENERATED = re.compile(r'^(?:Merge |Revert "|fixup! |squash! |amend! )')
+# Messages written by git itself (merges also run the commit-msg hook), and the
+# autosquash prefixes, allowed locally only.
+MERGE = re.compile(r"^Merge ")
+GIT_GENERATED = re.compile(r'^(?:Merge |Revert ")')
+AUTOSQUASH = re.compile(r"^(?:fixup|squash|amend)! ")
 SIGN_OFF = re.compile(r"^Signed-off-by: .+ <(?P<email>[^>]+)>$", re.MULTILINE)
 MAX_SUBJECT_LENGTH = 100
 SCISSORS = "# ------------------------ >8 ------------------------"
@@ -35,23 +42,27 @@ def clean(message: str) -> str:
     return "\n".join(line for line in message.splitlines() if not line.startswith("#")).strip()
 
 
-def check(message: str, author_email: str | None = None, is_bot: bool = False) -> list[str]:
+def check(message: str, author_email: str | None = None, is_bot: bool = False,
+          allow_autosquash: bool = True) -> list[str]:
     message = clean(message)
     if not message:
         return ["the commit message is empty"]
     subject = message.splitlines()[0]
     errors = []
 
-    if not GIT_GENERATED.match(subject):
+    if AUTOSQUASH.match(subject):
+        if not allow_autosquash:
+            errors.append(f"squash this commit into its target before merging: {subject!r}")
+    elif not GIT_GENERATED.match(subject):
         if not SUBJECT.match(subject):
             errors.append(
                 f"the subject does not follow Conventional Commits: {subject!r}\n"
                 f"    expected '<type>[(scope)][!]: <description>', with type one of: {', '.join(TYPES)}"
             )
-        if len(subject) > MAX_SUBJECT_LENGTH:
+        if len(subject) > MAX_SUBJECT_LENGTH and not is_bot:
             errors.append(f"the subject is {len(subject)} characters long (at most {MAX_SUBJECT_LENGTH})")
 
-    if not is_bot:
+    if not is_bot and not MERGE.match(subject):
         emails = [m.group("email") for m in SIGN_OFF.finditer(message)]
         if not emails:
             errors.append("the 'Signed-off-by:' line is missing: commit with 'git commit -s' (DCO)")
@@ -69,7 +80,7 @@ def check_range(revision_range: str) -> int:
     for sha in git("rev-list", "--no-merges", "--reverse", revision_range).split():
         author_name, author_email = git("show", "-s", "--format=%an%n%ae", sha).splitlines()
         is_bot = author_name.endswith("[bot]")
-        errors = check(git("show", "-s", "--format=%B", sha), author_email, is_bot)
+        errors = check(git("show", "-s", "--format=%B", sha), author_email, is_bot, allow_autosquash=False)
         if errors:
             failures += 1
             print(f"{sha[:10]}: {git('show', '-s', '--format=%s', sha).strip()}")

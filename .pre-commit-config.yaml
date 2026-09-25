@@ -8,7 +8,9 @@ repos:
   - repo: https://github.com/pre-commit/pre-commit-hooks
     rev: v6.0.0
     hooks:
+      # --enforce-all: also check files already tracked, so the check means something in CI.
       - id: check-added-large-files
+        args: [--enforce-all]
       - id: check-merge-conflict
       - id: check-yaml
       - id: end-of-file-fixer

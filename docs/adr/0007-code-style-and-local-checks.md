@@ -27,7 +27,7 @@ Contributors work in the dev container or directly on Windows or Linux, and comm
 - **C++ formatting**: `.clang-format`, close to the Qt coding style, with a 100-column limit. clang-format is pinned to 18.1.3 through the `mirrors-clang-format` hook, the version the dev container ships.
 - **C++ static analysis**: `.clang-tidy` enables the `bugprone`, `cert`, `clang-analyzer`, `concurrency`, `cppcoreguidelines`, `misc`, `modernize`, `performance`, `portability` and `readability` checks, minus a few noisy ones, with every finding treated as an error. `tests/.clang-tidy` relaxes the rules that clash with Qt Test conventions. clang-tidy needs a build tree, so it runs in CI (and on demand locally), not in the commit hooks.
 - **QML**: `qmlformat` as a pre-commit hook; `qmllint` through the CMake `all_qmllint` target in CI, with `.qmllint.ini` turning every warning into a failure.
-- **Commit messages**: `scripts/check_commit_message.py` checks the Conventional Commits subject and the `Signed-off-by:` line, as a `commit-msg` hook and in CI on the pull request commits. In CI the sign-off must also match the author; bot commits (Dependabot) are exempt from the sign-off.
+- **Commit messages**: `scripts/check_commit_message.py` checks the Conventional Commits subject and the `Signed-off-by:` line, as a `commit-msg` hook and in CI on the pull request commits. Merge commits need no sign-off (`git merge` runs the hook too, and CI skips merges). In CI the sign-off must also match the author, and `fixup!`/`squash!`/`amend!` commits, accepted locally, are rejected so they never reach `dev`. Bot commits (Dependabot) are exempt from the sign-off and the subject length.
 
 ## Consequences
 
