@@ -26,6 +26,9 @@ permissions:
 
 env:
   AQTINSTALL_VERSION: "3.3.0"
+  # On pull requests, a dummy suffix exercises the pre-release naming before it
+  # is first needed on dev.
+  VERSION_SUFFIX: ${{ inputs.version-suffix || (github.event_name == 'pull_request' && '-pr') || '' }}
 
 jobs:
   appimage:
@@ -49,15 +52,13 @@ jobs:
 
       - name: Build
         env:
-          VERSION_SUFFIX: ${{ inputs.version-suffix }}
+          VERSION_SUFFIX: ${{ env.VERSION_SUFFIX }}
         run: |
           cmake --preset release -DMISIGN_BUILD_TESTS=OFF "-DMISIGN_VERSION_SUFFIX=$VERSION_SUFFIX"
           cmake --build --preset release
           DESTDIR="$RUNNER_TEMP/AppDir" cmake --install build/release --prefix /usr
 
       - name: Build the AppImage
-        env:
-          VERSION_SUFFIX: ${{ inputs.version-suffix }}
         run: |
           tools="$RUNNER_TEMP/linuxdeploy"
           mkdir -p "$tools"
@@ -122,8 +123,6 @@ jobs:
           arch: x64
 
       - name: Build
-        env:
-          VERSION_SUFFIX: ${{ inputs.version-suffix }}
         run: |
           cmake --preset release -DMISIGN_BUILD_TESTS=OFF "-DMISIGN_VERSION_SUFFIX=$env:VERSION_SUFFIX"
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }

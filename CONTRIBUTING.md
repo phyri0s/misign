@@ -14,7 +14,7 @@ All project content is written in English: documentation, code comments, commit 
 
 Merge methods (see [ADR 0008](docs/adr/0008-packaging-and-releases.md)):
 
-- work branches → `dev`: **squash and merge**. The pull request title becomes the commit subject and the changelog entry, so it must follow Conventional Commits (checked by the "PR title" workflow);
+- work branches → `dev`: **squash and merge**. The pull request title becomes the commit subject and the changelog entry, so it must follow Conventional Commits (checked by the "PR title" workflow). GitHub's Revert button titles pull requests `Revert "feat: …"`: retitle them `revert: …`;
 - `dev` → `main`, and `main` → `dev` after a release: **merge commit**, never a squash, so that release-please keeps finding the last release.
 
 ## Commits
@@ -55,8 +55,8 @@ cmake --build --preset debug --target all_qmllint
 
 ## Releases
 
-- **Pre-releases**: every merge into `dev` publishes a GitHub pre-release `vX.Y.Z-dev.N` with the Linux AppImage and the Windows installer (`deploy-dev.yml`).
-- **Stable releases**: merge `dev` into `main`. release-please then opens (or updates) a release pull request with the new version and `CHANGELOG.md`. Merging it publishes the `vX.Y.Z` release with both installers, and opens a pull request bringing `main` back into `dev`: merge it with a merge commit.
+- **Pre-releases**: each merge into `dev` publishes a GitHub pre-release `vX.Y.Z-dev.N` with the Linux AppImage and the Windows installer (`deploy-dev.yml`).
+- **Stable releases**: merge `dev` into `main`. release-please then opens (or updates) a release pull request with the new version and `CHANGELOG.md`. Merging it publishes the `vX.Y.Z` release with both installers, and opens a pull request bringing `main` back into `dev`, set to auto-merge with a merge commit once its checks pass. When several merges land on `dev` while a pre-release is being built, only the latest one gets its own pre-release.
 
 release-please needs a GitHub App token, set up once by a repository admin:
 

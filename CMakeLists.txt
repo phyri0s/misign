@@ -40,4 +40,7 @@ endif()
 # The domain must stay free of Qt, PoDoFo and any other external library (ADR 0001).
 misign_forbid_external_dependencies(misign_domain)
 
-include(MisignPackaging)
+# The NSIS installer (ADR 0008); the Linux AppImage is built by linuxdeploy in CI.
+if(WIN32)
+    include(MisignPackaging)
+endif()

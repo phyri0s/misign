@@ -32,16 +32,29 @@ jobs:
 
       - name: Compute the pre-release version
         id: version
+        shell: bash # -e with pipefail
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           # Dry run: release-please reads the commits on dev and prints the
           # release pull request it would open ("title: chore(dev): release X.Y.Z").
-          next="$(npx --yes release-please@17.11.2 release-pr --dry-run \
-            --token "$GH_TOKEN" --repo-url "$GITHUB_REPOSITORY" --target-branch dev 2>/dev/null \
-            | sed -n 's/^title: .* release \([0-9][0-9.]*\)$/\1/p' | head -n 1)"
+          # A failure (network, API limits) must stop the deployment, not silently
+          # fall back to a patch version.
+          if ! output="$(npx --yes release-please@17.11.2 release-pr --dry-run \
+            --token "$GH_TOKEN" --repo-url "$GITHUB_REPOSITORY" --target-branch dev 2>&1)"; then
+            echo "$output"
+            echo "::error::The release-please dry run failed."
+            exit 1
+          fi
+          next="$(sed -n 's/^title: .* release \([0-9][0-9.]*\)$/\1/p' <<< "$output" | head -n 1)"
+          if [ -z "$next" ] && ! grep -q "Would open 0 pull requests" <<< "$output"; then
+            echo "$output"
+            echo "::error::Unexpected release-please dry-run output: no version and no 'Would open 0 pull requests'."
+            exit 1
+          fi
           if [ -z "$next" ]; then
-            # No user-facing change since the last release: next patch version.
+            # release-please proposes no release (no user-facing change since the
+            # last one): next patch version.
             released="$(python3 -c 'import json; print(json.load(open(".release-please-manifest.json")).get(".", ""))')"
             if [ -n "$released" ]; then
               IFS=. read -r major minor patch <<< "$released"

@@ -1,5 +1,5 @@
-# Installers (ADR 0008): an NSIS installer on Windows, built with CPack from the
-# installed tree. The Linux AppImage is built by linuxdeploy in CI instead.
+# Windows installer (ADR 0008): NSIS, built with CPack from the installed tree.
+# Only included on Windows; the Linux AppImage is built by linuxdeploy in CI.
 set(CPACK_PACKAGE_NAME "Misign")
 set(CPACK_PACKAGE_VENDOR "Misign")
 set(CPACK_PACKAGE_DESCRIPTION_SUMMARY "${PROJECT_DESCRIPTION}")
