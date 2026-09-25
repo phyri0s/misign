@@ -39,11 +39,11 @@ The prototype (`spike`) must verify that:
 
 **Point 1 (PHY-82, [spike](../../spikes/phy-82-podofo-incremental/README.md)): validated.** On the signed fixture, `SaveUpdate` keeps the original bytes and appends one revision; `qpdf --check`, `pdfsig` and pyHanko all report the existing signature as intact and valid, whether the drawing goes into the page content or into an annotation. Three findings shape the decision above:
 
-- by default PoDoFo's garbage collection frees objects in the incremental update, which signature validators flag as a suspicious modification: `NoCollectGarbage` prevents it;
-- readers accept annotations added after a signature, but report page content changes; DocMDP also permits annotations (level 3), never content changes: the drawing goes into an annotation;
-- Qt PDF only draws annotations with `RenderFlag::Annotations`, and never draws form field widgets, so an existing visible digital signature appears blank.
+- observed: by default PoDoFo's garbage collection frees objects in the incremental update, which signature validators flag as a suspicious modification; `NoCollectGarbage` prevents it;
+- per the PDF specification, not observed (no available oracle tells the two variants apart): annotations may be added after a signature, and DocMDP permits them (level 3), while page content changes are what readers report against a signature. The drawing therefore goes into an annotation;
+- observed: Qt PDF only draws annotations with `RenderFlag::Annotations`, and never draws form field widgets, so an existing visible digital signature appears blank. The likely cause is PDFium, which only draws widgets through its form-fill API, not exposed by `QPdfDocument`.
 
-Not covered yet: a check in Adobe Acrobat Reader, and certified documents (`/Perms /DocMDP`), where `P < 3` forbids even annotations.
+Not covered yet: a check in Adobe Acrobat Reader, the only test that can confirm the annotation choice in a reader, and certified documents (`/Perms /DocMDP`), where `P < 3` forbids even annotations.
 
 **Point 2 (PHY-83)**: pending.
 

@@ -62,13 +62,37 @@ def pdfsig_summary(path: Path) -> str:
 
 
 def appended_objects(path: Path) -> list[str]:
-    """Object numbers and the start of their dictionary, in the new revision."""
+    """Object numbers and the start of their dictionary, in the new revision.
+    Only top-level "N G obj" definitions: objects inside an object stream would be
+    missed, so their presence is reported instead."""
     data = path.read_bytes()[SIGNED.stat().st_size:]
     found = []
     for match in re.finditer(rb"(\d+) (\d+) obj\s*<<(.{0,120}?)(?:>>|stream)", data, re.S):
         body = re.sub(rb"\s+", b" ", match.group(3)).decode("latin-1").strip()
         found.append(f"{match.group(1).decode()} {match.group(2).decode()}: << {body[:90]}")
+    if re.search(rb"/Type\s*/ObjStm", data):
+        found.append("warning: the revision has an object stream, whose objects are not listed")
     return found
+
+
+def freed_objects(path: Path) -> str:
+    """Free entries of the new revision's cross-reference table, other than the
+    head of the free list (object 0)."""
+    data = path.read_bytes()[SIGNED.stat().st_size:]
+    start = data.rfind(b"\nxref")
+    if start < 0:
+        return "no classic xref table (cross-reference stream): not parsed"
+    freed = []
+    number = 0
+    for line in data[start + 5:].split(b"trailer", 1)[0].splitlines():
+        fields = line.split()
+        if len(fields) == 2:  # subsection header: first object number, count
+            number = int(fields[0])
+        elif len(fields) == 3:
+            if fields[2] == b"f" and number != 0:
+                freed.append(f"{number} {int(fields[1])}")
+            number += 1
+    return ", ".join(freed) if freed else "none"
 
 
 def main() -> int:
@@ -98,6 +122,7 @@ def main() -> int:
         print(f"   pdfsig: {pdfsig_summary(target)}")
         print(f"   pyHanko: {pyhanko_status(target)}")
         print(f"   Qt PDF ink pixels (without, with annotations): {run(build / 'render', target, out_dir / name).stdout.strip()}")
+        print(f"   freed objects (xref 'f' entries): {freed_objects(target)}")
         print("   new revision objects:")
         for obj in appended_objects(target):
             print(f"     {obj}")
