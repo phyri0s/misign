@@ -1,0 +1,108 @@
+# Prod deployment (ADR 0004, ADR 0008). On every push to main, release-please
+# updates its release pull request (version, CHANGELOG.md). Merging that pull
+# request creates the SemVer tag and the GitHub release; this workflow then
+# attaches the installers and opens a pull request bringing main back into dev.
+#
+# release-please runs with a GitHub App token (RELEASE_APP_CLIENT_ID variable,
+# RELEASE_APP_PRIVATE_KEY secret): pull requests opened with the default token
+# can neither be created in this repository nor trigger the required CI checks.
+name: Deploy prod
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-prod
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  release-please:
+    name: release-please
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    outputs:
+      release-created: ${{ steps.release.outputs.release_created }}
+      tag: ${{ steps.release.outputs.tag_name }}
+    steps:
+      - name: Check the release app is configured
+        env:
+          CLIENT_ID: ${{ vars.RELEASE_APP_CLIENT_ID }}
+          PRIVATE_KEY: ${{ secrets.RELEASE_APP_PRIVATE_KEY }}
+        run: |
+          if [ -z "$CLIENT_ID" ] || [ -z "$PRIVATE_KEY" ]; then
+            echo "::error::Set the RELEASE_APP_CLIENT_ID variable and the RELEASE_APP_PRIVATE_KEY secret (see CONTRIBUTING.md)."
+            exit 1
+          fi
+
+      - uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3.2.0
+        id: app-token
+        with:
+          client-id: ${{ vars.RELEASE_APP_CLIENT_ID }}
+          private-key: ${{ secrets.RELEASE_APP_PRIVATE_KEY }}
+
+      - uses: googleapis/release-please-action@45996ed1f6d02564a971a2fa1b5860e934307cf7 # v5.0.0
+        id: release
+        with:
+          token: ${{ steps.app-token.outputs.token }}
+          target-branch: main
+          config-file: release-please-config.json
+          manifest-file: .release-please-manifest.json
+
+  package:
+    name: Package
+    needs: release-please
+    if: needs.release-please.outputs.release-created == 'true'
+    uses: ./.github/workflows/package.yml
+
+  publish:
+    name: Attach the installers
+    needs: [release-please, package]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          path: dist
+          merge-multiple: true
+
+      - name: Upload to the GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ needs.release-please.outputs.tag }}
+        run: gh release upload "$TAG" dist/* --repo "$GITHUB_REPOSITORY"
+
+  sync-dev:
+    name: Bring main back into dev
+    needs: release-please
+    if: needs.release-please.outputs.release-created == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3.2.0
+        id: app-token
+        with:
+          client-id: ${{ vars.RELEASE_APP_CLIENT_ID }}
+          private-key: ${{ secrets.RELEASE_APP_PRIVATE_KEY }}
+
+      # dev needs the release commit (CHANGELOG.md, version, manifest) so that
+      # release-please finds the release when it computes the next versions. A
+      # merge commit, not a squash, keeps that commit in the history of dev.
+      - name: Open the pull request from main to dev
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+          TAG: ${{ needs.release-please.outputs.tag }}
+        run: |
+          url="$(gh pr create --repo "$GITHUB_REPOSITORY" --base dev --head main \
+            --title "chore: bring main back into dev after $TAG" \
+            --body "Brings the $TAG release commit (CHANGELOG.md, version, release-please manifest) into dev. Merge it with a merge commit, not a squash.")"
+          echo "Opened $url"
+          if ! gh pr merge "$url" --merge --auto; then
+            echo "::notice::Auto-merge is not available: merge $url with a merge commit once its checks pass."
+          fi

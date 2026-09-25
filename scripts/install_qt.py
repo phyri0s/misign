@@ -1,9 +1,12 @@
 #!/usr/bin/env python3
 """Install the Qt version used by Misign, including Qt PDF.
 
-Qt itself is installed with aqtinstall. Since Qt 6.8, Qt PDF ships in the
-"extensions" repository, which aqtinstall 3.3 cannot install for recent
-versions, so this script downloads it directly from the same mirror.
+On Linux, Qt itself is installed with aqtinstall. Two parts are downloaded
+directly from the Qt mirror instead, because aqtinstall 3.3 cannot install
+them for Qt 6.11: Qt PDF, which ships in the "extensions" repository since
+Qt 6.8, and the whole of Qt on Windows, whose repository is now split into one
+directory per compiler. Every archive is checked against its SHA-1 and
+extracted into the Qt prefix.
 
 Requires aqtinstall (`pip install aqtinstall`), which also provides py7zr.
 """
@@ -32,10 +35,57 @@ ARCHITECTURES = {
     "win64_msvc2022_64": ("windows", "windows_x86", "msvc2022_64", "msvc2022_64"),
 }
 
+# Architectures installed directly from the mirror rather than with aqtinstall.
+DIRECT_INSTALL = {"win64_msvc2022_64"}
+
+# Archives not needed to build Misign.
+SKIPPED_ARCHIVES = ("qtdoc-",)
+# Windows runtime libraries packaged without their directory: they belong in bin/.
+BIN_ARCHIVES = ("d3dcompiler_47-", "opengl32sw-")
+
 
 def download(url: str) -> bytes:
     with urllib.request.urlopen(url, timeout=60) as response:
         return response.read()
+
+
+def install_package(base: str, package_name: str, prefix: Path) -> None:
+    """Download every archive of a repository package, check it and extract it."""
+    updates = ET.fromstring(download(f"{base}/Updates.xml"))
+    package = next(
+        (p for p in updates.iter("PackageUpdate") if p.findtext("Name") == package_name), None
+    )
+    if package is None:
+        sys.exit(f"{package_name} not found in {base}/Updates.xml")
+
+    import py7zr  # provided by aqtinstall
+
+    package_version = package.findtext("Version")
+    archives = [a.strip() for a in package.findtext("DownloadableArchives", "").split(",") if a.strip()]
+    for archive in archives:
+        if archive.startswith(SKIPPED_ARCHIVES):
+            continue
+        url = f"{base}/{package_name}/{package_version}{archive}"
+        print(f"Downloading {url}")
+        data = download(url)
+        expected_sha1 = download(f"{url}.sha1").decode().split()[0]
+        if hashlib.sha1(data).hexdigest() != expected_sha1:
+            sys.exit(f"Checksum mismatch for {archive}")
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / archive
+            path.write_bytes(data)
+            target = prefix / "bin" if archive.startswith(BIN_ARCHIVES) else prefix
+            with py7zr.SevenZipFile(path) as seven_zip:
+                seven_zip.extractall(target)
+
+
+def install_qt_directly(version: str, arch: str, prefix: Path) -> None:
+    _, repo_host, ext_subdir, _ = ARCHITECTURES[arch]
+    compact_version = version.replace(".", "")
+    base = f"{REPOSITORY}/{repo_host}/desktop/qt6_{compact_version}/qt6_{compact_version}_{ext_subdir}"
+    install_package(base, f"qt.qt6.{compact_version}.{arch}", prefix)
+    for module in QT_MODULES:
+        install_package(base, f"qt.qt6.{compact_version}.addons.{module}.{arch}", prefix)
 
 
 def install_qt(version: str, arch: str, output_dir: Path) -> None:
@@ -55,31 +105,7 @@ def install_extension(name: str, version: str, arch: str, prefix: Path) -> None:
     _, repo_host, ext_subdir, _ = ARCHITECTURES[arch]
     compact_version = version.replace(".", "")
     base = f"{REPOSITORY}/{repo_host}/extensions/{name}/{compact_version}/{ext_subdir}"
-    package_name = f"extensions.{name}.{compact_version}.{arch}"
-
-    updates = ET.fromstring(download(f"{base}/Updates.xml"))
-    package = next(
-        (p for p in updates.iter("PackageUpdate") if p.findtext("Name") == package_name), None
-    )
-    if package is None:
-        sys.exit(f"{package_name} not found in {base}/Updates.xml")
-
-    import py7zr  # provided by aqtinstall
-
-    package_version = package.findtext("Version")
-    archives = [a.strip() for a in package.findtext("DownloadableArchives", "").split(",") if a.strip()]
-    for archive in archives:
-        url = f"{base}/{package_name}/{package_version}{archive}"
-        print(f"Downloading {url}")
-        data = download(url)
-        expected_sha1 = download(f"{url}.sha1").decode().split()[0]
-        if hashlib.sha1(data).hexdigest() != expected_sha1:
-            sys.exit(f"Checksum mismatch for {archive}")
-        with tempfile.TemporaryDirectory() as tmp:
-            path = Path(tmp) / archive
-            path.write_bytes(data)
-            with py7zr.SevenZipFile(path) as seven_zip:
-                seven_zip.extractall(prefix)
+    install_package(base, f"extensions.{name}.{compact_version}.{arch}", prefix)
 
 
 def main() -> None:
@@ -93,7 +119,10 @@ def main() -> None:
 
     prefix = args.output_dir.expanduser().resolve() / args.version / ARCHITECTURES[args.arch][3]
     if not args.print_prefix:
-        install_qt(args.version, args.arch, args.output_dir.expanduser().resolve())
+        if args.arch in DIRECT_INSTALL:
+            install_qt_directly(args.version, args.arch, prefix)
+        else:
+            install_qt(args.version, args.arch, args.output_dir.expanduser().resolve())
         install_extension("qtpdf", args.version, args.arch, prefix)
     print(prefix)
 
