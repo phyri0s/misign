@@ -1,4 +1,6 @@
 add_library(misign_domain STATIC
+    page_geometry.cpp
+    page_geometry.h
     point.cpp
     point.h
 )
