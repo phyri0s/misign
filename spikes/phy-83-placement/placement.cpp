@@ -5,10 +5,14 @@
 // selection by image comparison. Throwaway code, see README.md.
 //
 // usage: placement <out-dir> <file.pdf>...
+// Each output is a copy of the input with the boxes added as an incremental
+// update, saved with the PHY-82 options. Exits with 1 when a raw-mode check fails
+// (the naive mode is a negative control, expected to fail on rotated pages).
 
 #include "domain/page_geometry.h"
 
 #include <QDir>
+#include <QFile>
 #include <QFileInfo>
 #include <QGuiApplication>
 #include <QImage>
@@ -133,7 +137,9 @@ struct Measure {
 // The reusable part: find a solid-colour mark on a rendered page.
 Measure measure(const QImage &image, const ScreenRect &expected)
 {
-    // Search around the expected box only: the fixtures draw black text elsewhere.
+    // The red box is searched on the whole page, so that a misplaced box is still
+    // found. The black marker is only searched inside the red box and near the
+    // expected position: the fixtures print black text elsewhere.
     const int margin = 40;
     const int x0 = std::max(0, static_cast<int>(expected.left) - margin);
     const int y0 = std::max(0, static_cast<int>(expected.top) - margin);
@@ -192,6 +198,7 @@ int main(int argc, char *argv[])
 
     int checks = 0;
     int failures = 0;
+    int naiveFailures = 0;
     std::printf("%-24s %4s %6s %9s %5s %-5s  %-9s %-11s %-8s %s\n", "file", "page", "rotate",
                 "cropbox", "scale", "mode", "page size", "max error", "upright", "result");
 
@@ -200,20 +207,24 @@ int main(int argc, char *argv[])
         const std::string name = QFileInfo(input).fileName().toStdString();
         for (const Mode mode : {Mode::Raw, Mode::Naive}) {
             for (const double scale : kScales) {
-                // Place the box on every page, then save.
+                // Copy the input, place the box on every page, and save as an
+                // incremental update with the PHY-82 options (ADR 0005).
+                const QString output =
+                    outDir.filePath(QStringLiteral("%1-%2-x%3.pdf")
+                                        .arg(QFileInfo(input).completeBaseName(), modeName(mode))
+                                        .arg(scale));
+                QFile::remove(output);
+                QFile::copy(input, output);
                 PoDoFo::PdfMemDocument doc;
-                doc.Load(input.toStdString());
+                doc.Load(output.toStdString());
                 auto &pages = doc.GetPages();
                 std::vector<PageGeometry> geometries;
                 for (unsigned i = 0; i < pages.GetCount(); ++i) {
                     geometries.push_back(geometryOf(pages.GetPageAt(i)));
                     placeBox(doc, pages.GetPageAt(i), mode, scale);
                 }
-                const QString output =
-                    outDir.filePath(QStringLiteral("%1-%2-x%3.pdf")
-                                        .arg(QFileInfo(input).completeBaseName(), modeName(mode))
-                                        .arg(scale));
-                doc.Save(output.toStdString());
+                doc.SaveUpdate(output.toStdString(), PoDoFo::PdfSaveOptions::NoCollectGarbage |
+                                                         PoDoFo::PdfSaveOptions::NoMetadataUpdate);
 
                 // Render with Qt PDF and compare.
                 QPdfDocument rendered;
@@ -249,7 +260,7 @@ int main(int argc, char *argv[])
                     }
                     const bool ok = sizeOk && error <= kTolerance && upright;
                     ++checks;
-                    failures += ok ? 0 : 1;
+                    (mode == Mode::Raw ? failures : naiveFailures) += ok ? 0 : 1;
                     const PdfRect visible = geometry.visibleBox();
                     std::printf("%-24s %4d %6d %9s %5.1f %-5s  %-9s %-11s %-8s %s\n", name.c_str(),
                                 i + 1, static_cast<int>(geometry.rotation()),
@@ -262,6 +273,7 @@ int main(int argc, char *argv[])
             }
         }
     }
-    std::printf("\n%d checks, %d failed\n", checks, failures);
-    return 0;
+    std::printf("\n%d checks: raw mode %d failed, naive mode %d failed\n", checks, failures,
+                naiveFailures);
+    return failures == 0 ? 0 : 1;
 }

@@ -8,7 +8,7 @@ Throwaway harness answering one question before the Signature box milestone: giv
 
 `PageGeometry` takes a page's MediaBox, CropBox and `/Rotate`, and:
 
-- computes the visible area: the CropBox clipped to the MediaBox, or the MediaBox when there is no CropBox or it lies outside;
+- computes the visible area: the CropBox clipped to the MediaBox, with PDFium's fallbacks for degenerate boxes (an empty MediaBox stands for US Letter, an empty or missing CropBox shows the MediaBox, a CropBox outside the MediaBox leaves nothing visible);
 - gives the displayed size (width and height swapped for 90 and 270);
 - converts screen coordinates (pixels on the rendered page, origin at the top left, `scale` pixels per point) to user space and back, for points and rectangles;
 - exposes the `displayedToUser()` matrix, which also makes content drawn in displayed orientation appear upright on a rotated page.
@@ -24,7 +24,7 @@ The unit tests check, among others, every displayed corner of every page listed 
 1. reads the page geometry with PoDoFo (`GetMediaBoxRaw`, `GetCropBoxRaw`, `TryGetRotationRaw`);
 2. selects a rectangle on the displayed page (20 to 60 % of the width, 55 to 70 % of the height: asymmetric on purpose);
 3. converts it to user space with `PageGeometry::toUser`;
-4. draws it with PoDoFo as a `/Stamp` annotation (as decided in PHY-82): a red box with a black square in its displayed top-left corner;
+4. draws it with PoDoFo as a `/Stamp` annotation (as decided in PHY-82): a red box with a black square in its displayed top-left corner, saved on a copy of the input with `SaveUpdate` and the PHY-82 options (`NoCollectGarbage | NoMetadataUpdate`);
 5. renders the page with Qt PDF (`RenderFlag::Annotations`) at the same zoom level, and compares:
    - the page size reported by Qt PDF with the displayed size computed by the domain;
    - the bounding box of the red pixels with the selection (tolerance: 1.5 px per edge, for the rounded image size);
@@ -46,7 +46,7 @@ cd tests/fixtures/pdf
 QT_QPA_PLATFORM=offscreen ../../../build-container/spike-83/placement ../../../build-container/spike-83/out *.pdf
 ```
 
-The output PDFs and one PNG per page are written to `build-container/spike-83/out/`.
+The output PDFs and one PNG per page are written to `build-container/spike-83/out/`. The program exits with 1 when a `raw` check fails; the `naive` mode is a negative control, expected to fail on rotated pages.
 
 ## Results
 
@@ -59,6 +59,8 @@ All observed with PoDoFo 1.1.2 and Qt PDF 6.11.3, on the 11 PDFs of the corpus (
 
 - **Qt PDF's page size** (`QPdfDocument::pagePointSize`) matches the domain's displayed size on every page: it is the visible area, turned by `/Rotate`.
 - **Unusual `/Rotate` values**: pages derived from `a4-rotate-90.pdf` with `/Rotate` set to -90, 450, 135, 45 and -45 (rewritten with `qpdf`, not in the corpus) are displayed by Qt PDF as 270, 90, 90, 0 and 0, and the `raw` placement passes on all of them (20 of 20). This confirms the PDFium reading implemented by `rotationFromDegrees`.
+- **Degenerate boxes**: pages derived from `a4-cropbox-offset.pdf` (rewritten with `qpdf`, not in the corpus) are displayed by Qt PDF as PDFium computes them, which `PageGeometry` now follows: a CropBox outside the MediaBox gives a 0 × 0 page, an empty CropBox shows the MediaBox (700 × 950), an empty MediaBox stands for US Letter and clips the CropBox (552 × 702), and a CropBox partly outside is clipped (700 × 800).
+- **Both spike rules together**: on `signed-a4.pdf`, the boxes placed with `SaveUpdate` and the PHY-82 options keep the original bytes (3 revisions), pass `qpdf --check`, and the existing signature stays valid (`pdfsig`: "Signature is Valid"; pyHanko: intact, valid, trusted), at all 4 zoom levels.
 - **PoDoFo's convenience API adjusts coordinates for the page rotation** (`adjustRectToCurrentRotation` in `PdfPage`, and the canvas rotation alignment in `PdfPainter`). Fed with user-space coordinates, it misplaces and turns the box on every rotated page, and it also disagrees with Qt PDF on invalid values such as `/Rotate 45`. The adapter must use the raw APIs.
 
 ### Reusable image comparison
@@ -75,4 +77,4 @@ The `measure` function in `placement.cpp` is the approach to reuse in integratio
 
 - Move on with `PageGeometry` as it is: it is already in `src/domain/` with its unit tests.
 - In the PoDoFo adapter, read boxes and rotation with `GetMediaBoxRaw`, `GetCropBoxRaw` and `TryGetRotationRaw`, and place annotations with `SetRectRaw` and `SetAppearanceStreamRaw`, the form XObject carrying the rotation part of `displayedToUser()`.
-- Add pages with inherited `/Rotate`, unusual `/Rotate` values and `UserUnit` to the corpus before writing the adapter.
+- Add pages with inherited `/Rotate`, unusual `/Rotate` values, degenerate boxes and `UserUnit` to the corpus before writing the adapter (PHY-87). The adapter should refuse pages without a visible area (`PageGeometry::hasVisibleArea`).

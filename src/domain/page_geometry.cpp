@@ -1,6 +1,7 @@
 #include "domain/page_geometry.h"
 
 #include <algorithm>
+#include <cassert>
 
 namespace misign::domain {
 
@@ -11,18 +12,26 @@ PdfRect normalized(const PdfRect &rect) noexcept
     return PdfRect::fromCorners({rect.left, rect.bottom}, {rect.right, rect.top});
 }
 
-// The PDF specification clips the CropBox to the MediaBox.
+// US Letter, which PDFium uses for an empty MediaBox.
+constexpr PdfRect kDefaultMediaBox{0.0, 0.0, 612.0, 792.0};
+
+// The visible area as PDFium computes it (CPDF_Page): the PDF specification
+// clips the CropBox to the MediaBox, and PDFium adds the fallbacks for empty
+// boxes. Checked against Qt PDF in the PHY-83 spike.
 PdfRect visibleArea(const PdfRect &mediaBox, const std::optional<PdfRect> &cropBox) noexcept
 {
-    const PdfRect media = normalized(mediaBox);
-    if (!cropBox) {
+    PdfRect media = normalized(mediaBox);
+    if (media.isEmpty()) {
+        media = kDefaultMediaBox;
+    }
+    if (!cropBox || normalized(*cropBox).isEmpty()) {
         return media;
     }
     const PdfRect crop = normalized(*cropBox);
     const PdfRect clipped{std::max(media.left, crop.left), std::max(media.bottom, crop.bottom),
                           std::min(media.right, crop.right), std::min(media.top, crop.top)};
-    if (clipped.width() <= 0.0 || clipped.height() <= 0.0) {
-        return media;
+    if (clipped.isEmpty()) {
+        return {0.0, 0.0, 0.0, 0.0};
     }
     return clipped;
 }
@@ -113,6 +122,7 @@ AffineMatrix PageGeometry::userToDisplayed() const noexcept
 
 PdfPoint PageGeometry::toUser(ScreenPoint point, double scale) const noexcept
 {
+    assert(scale > 0.0 && hasVisibleArea());
     const PdfPoint displayed{point.x / scale, displayedHeight() - (point.y / scale)};
     return displayedToUser().map(displayed);
 }
@@ -125,6 +135,7 @@ PdfRect PageGeometry::toUser(const ScreenRect &rect, double scale) const noexcep
 
 ScreenPoint PageGeometry::toScreen(PdfPoint point, double scale) const noexcept
 {
+    assert(scale > 0.0 && hasVisibleArea());
     const PdfPoint displayed = userToDisplayed().map(point);
     return {displayed.x * scale, (displayedHeight() - displayed.y) * scale};
 }

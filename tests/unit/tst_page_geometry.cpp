@@ -49,6 +49,7 @@ private slots:
     void readsRotateLikePdfium_data();
     void readsRotateLikePdfium();
     void visibleBoxIsTheCropBoxClippedToTheMediaBox();
+    void handlesDegenerateBoxesLikePdfium();
     void swapsDisplayedSizeWhenSideways();
     void mapsDisplayedCornersOfTheCorpus_data();
     void mapsDisplayedCornersOfTheCorpus();
@@ -95,14 +96,30 @@ void TestPageGeometry::visibleBoxIsTheCropBoxClippedToTheMediaBox()
     // Partly outside the MediaBox: clipped.
     QCOMPARE(PageGeometry(media, PdfRect{-20.0, 100.0, 800.0, 900.0}, Rotation::None).visibleBox(),
              (PdfRect{0.0, 100.0, 700.0, 900.0}));
-    // Entirely outside: the MediaBox stays visible.
-    QCOMPARE(PageGeometry(media, PdfRect{800.0, 800.0, 900.0, 900.0}, Rotation::None).visibleBox(),
-             media);
     // Corners given in reverse order are normalized.
     QCOMPARE(
         PageGeometry({700.0, 950.0, 0.0, 0.0}, PdfRect{655.0, 931.0, 60.0, 90.0}, Rotation::None)
             .visibleBox(),
         (PdfRect{60.0, 90.0, 655.0, 931.0}));
+}
+
+// Degenerate boxes follow PDFium, as observed in Qt PDF (PHY-83 spike).
+void TestPageGeometry::handlesDegenerateBoxesLikePdfium()
+{
+    const PdfRect media{0.0, 0.0, 700.0, 950.0};
+
+    // Entirely outside: nothing is visible.
+    const PageGeometry outside(media, PdfRect{800.0, 800.0, 900.0, 900.0}, Rotation::None);
+    QVERIFY(!outside.hasVisibleArea());
+    QCOMPARE(outside.displayedWidth(), 0.0);
+    // An empty CropBox: the MediaBox is visible.
+    QCOMPARE(PageGeometry(media, PdfRect{60.0, 90.0, 60.0, 90.0}, Rotation::None).visibleBox(),
+             media);
+    // An empty MediaBox stands for US Letter, then clips the CropBox.
+    QCOMPARE(PageGeometry({0.0, 0.0, 0.0, 0.0}, PdfRect{60.0, 90.0, 655.0, 931.0}, Rotation::None)
+                 .visibleBox(),
+             (PdfRect{60.0, 90.0, 612.0, 792.0}));
+    QVERIFY(PageGeometry(media, std::nullopt, Rotation::None).hasVisibleArea());
 }
 
 void TestPageGeometry::swapsDisplayedSizeWhenSideways()
