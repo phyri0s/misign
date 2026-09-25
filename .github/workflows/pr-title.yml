@@ -1,0 +1,24 @@
+# The pull request title becomes the commit subject when the pull request is
+# squashed into dev, and release-please builds the changelog from it (ADR 0008).
+name: PR title
+
+on:
+  pull_request:
+    branches: [dev, main]
+    types: [opened, edited, synchronize, reopened]
+
+permissions:
+  contents: read
+
+jobs:
+  title:
+    name: PR title
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Check the title follows Conventional Commits
+        env:
+          TITLE: ${{ github.event.pull_request.title }}
+        run: python3 scripts/check_commit_message.py --title "$TITLE"

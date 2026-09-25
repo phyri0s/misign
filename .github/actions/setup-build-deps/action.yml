@@ -9,6 +9,9 @@ inputs:
   full:
     description: Also install the system packages and PoDoFo; "false" only sets up Qt's tools
     default: "true"
+  podofo:
+    description: Build PoDoFo (with full); "false" skips it when nothing links it
+    default: "true"
   podofo-version:
     description: PoDoFo release to build (Ubuntu 24.04 only ships 0.9.8)
     default: "1.1.2"
@@ -49,16 +52,16 @@ runs:
         "$RUNNER_TEMP/aqt/bin/python" scripts/install_qt.py --output-dir ~/Qt
 
     - name: Restore PoDoFo
-      if: inputs.full == 'true'
+      if: inputs.full == 'true' && inputs.podofo == 'true'
       id: podofo-cache
       uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
       with:
         path: ~/podofo
         # The action file hash covers the build flags below: changing them rebuilds PoDoFo.
-        key: podofo-${{ inputs.podofo-version }}-${{ runner.os }}-${{ runner.arch }}-ubuntu24.04-${{ hashFiles('.github/actions/setup-build-deps/action.yml') }}
+        key: podofo-${{ inputs.podofo-version }}-${{ runner.os }}-${{ runner.arch }}-${{ env.ImageOS }}-${{ hashFiles('.github/actions/setup-build-deps/action.yml') }}
 
     - name: Build PoDoFo
-      if: inputs.full == 'true' && steps.podofo-cache.outputs.cache-hit != 'true'
+      if: inputs.full == 'true' && inputs.podofo == 'true' && steps.podofo-cache.outputs.cache-hit != 'true'
       shell: bash
       run: |
         git clone --depth 1 --branch ${{ inputs.podofo-version }} https://github.com/podofo/podofo.git "$RUNNER_TEMP/podofo"
