@@ -1,6 +1,22 @@
 {
   "name": "Misign",
-  "build": { "dockerfile": "Dockerfile" },
+  "build": {
+    "dockerfile": "Dockerfile",
+    "context": ".."
+  },
+  // Same path as on the host, so paths in compiler output and compile_commands.json match.
+  "workspaceMount": "source=${localWorkspaceFolder},target=${localWorkspaceFolder},type=bind",
+  "workspaceFolder": "${localWorkspaceFolder}",
+  // X11 display: WSLg on Windows, the X server (or XWayland) on Linux.
+  "mounts": [
+    "source=/tmp/.X11-unix,target=/tmp/.X11-unix,type=bind"
+  ],
+  "containerEnv": {
+    "DISPLAY": "${localEnv:DISPLAY}",
+    // Builds go to build-container/ so they never clash with host builds in build/.
+    "MISIGN_BUILD_SUFFIX": "-container",
+    "QT_QPA_PLATFORM": "xcb"
+  },
   "customizations": {
     "vscode": {
       "extensions": [

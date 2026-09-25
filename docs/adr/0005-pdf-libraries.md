@@ -37,5 +37,5 @@ The prototype (`spike`) must verify that:
 ## Consequences
 
 - Ubuntu 24.04 only ships PoDoFo 0.9.8: the dev container builds PoDoFo from source. CI will have to do the same, or use vcpkg, especially on Windows.
-- The dev container uses Qt 6.4 (Ubuntu packages): the Qt version must be aligned with CI.
+- Qt PDF is installed with Qt by `scripts/install_qt.py` (see ADR 0006).
 - PDF/A validation with veraPDF is postponed to a later release.

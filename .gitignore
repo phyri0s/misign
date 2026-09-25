@@ -42,3 +42,6 @@ tests/**/output/
 
 # Local Claude Code instructions
 CLAUDE.md
+
+# aqtinstall
+aqtinstall.log

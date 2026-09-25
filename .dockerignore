@@ -1,0 +1,3 @@
+# Only scripts/ is needed by the dev container image
+*
+!scripts/
