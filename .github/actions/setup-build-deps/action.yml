@@ -30,7 +30,7 @@ runs:
 
     - name: Restore Qt
       id: qt-cache
-      uses: actions/cache@v6
+      uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
       with:
         path: ~/Qt
         key: qt-${{ runner.os }}-${{ hashFiles('scripts/install_qt.py') }}-aqt${{ inputs.aqtinstall-version }}
@@ -45,10 +45,11 @@ runs:
 
     - name: Restore PoDoFo
       id: podofo-cache
-      uses: actions/cache@v6
+      uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
       with:
         path: ~/podofo
-        key: podofo-${{ inputs.podofo-version }}-${{ runner.os }}-${{ runner.arch }}-ubuntu24.04
+        # The action file hash covers the build flags below: changing them rebuilds PoDoFo.
+        key: podofo-${{ inputs.podofo-version }}-${{ runner.os }}-${{ runner.arch }}-ubuntu24.04-${{ hashFiles('.github/actions/setup-build-deps/action.yml') }}
 
     - name: Build PoDoFo
       if: steps.podofo-cache.outputs.cache-hit != 'true'
