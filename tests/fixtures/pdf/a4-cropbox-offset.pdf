@@ -1,0 +1,50 @@
+%PDF-1.7
+%‚„œ”
+1 0 obj
+<< /Type /Catalog /Pages 3 0 R >>
+endobj
+2 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>
+endobj
+3 0 obj
+<< /Type /Pages /Kids [5 0 R] /Count 1 >>
+endobj
+4 0 obj
+<< /Length 835 >>
+stream
+0.8 0 0 rg
+BT /F1 10 Tf 5 5 Td (OUTSIDE CROPBOX: MUST NOT BE VISIBLE) Tj ET
+q 1 0 0 1 60 90 cm
+0 0 0.8 RG 2 w 5 5 585.276 831.89 re S
+297.638 721.89 m 297.638 811.89 l S
+0 0 0.8 rg 285.638 791.89 m 297.638 816.89 l 309.638 791.89 l f
+0 g
+BT /F1 12 Tf 315.638 781.89 Td (TOP) Tj ET
+BT /F1 14 Tf 40 460.945 Td (misign fixture: a4-cropbox-offset.pdf) Tj ET
+BT /F1 11 Tf 40 442.945 Td (page 1 of 1) Tj ET
+BT /F1 11 Tf 40 424.945 Td (MediaBox [0 0 700 950]) Tj ET
+BT /F1 11 Tf 40 406.945 Td (CropBox [60 90 655.276 931.89]) Tj ET
+BT /F1 11 Tf 40 388.945 Td (Rotate 0) Tj ET
+BT /F1 8 Tf 12 14 Td (bottom_left: user \(60, 90\)) Tj ET
+BT /F1 8 Tf 445.276 14 Td (bottom_right: user \(655.276, 90\)) Tj ET
+BT /F1 8 Tf 12 819.89 Td (top_left: user \(60, 931.89\)) Tj ET
+BT /F1 8 Tf 445.276 819.89 Td (top_right: user \(655.276, 931.89\)) Tj ET
+Q
+endstream
+endobj
+5 0 obj
+<< /Type /Page /Parent 3 0 R /MediaBox [0 0 700 950] /Resources << /Font << /F1 2 0 R >> >> /Contents 4 0 R /CropBox [60 90 655.276 931.89] >>
+endobj
+xref
+0 6
+0000000000 65535 f 
+0000000015 00000 n 
+0000000064 00000 n 
+0000000161 00000 n 
+0000000218 00000 n 
+0000001103 00000 n 
+trailer
+<< /Size 6 /Root 1 0 R /ID [<1a8e5d03dc3d8040a5ac9a1581b7e4ee> <1a8e5d03dc3d8040a5ac9a1581b7e4ee>] >>
+startxref
+1261
+%%EOF

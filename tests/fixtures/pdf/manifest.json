@@ -1,0 +1,579 @@
+{
+  "a4-portrait.pdf": [
+    {
+      "media_box": [
+        0,
+        0,
+        595.276,
+        841.89
+      ],
+      "crop_box": [
+        0,
+        0,
+        595.276,
+        841.89
+      ],
+      "rotate": 0,
+      "displayed_size": [
+        595.276,
+        841.89
+      ],
+      "displayed_corners_in_user_space": {
+        "bottom_left": [
+          0,
+          0
+        ],
+        "bottom_right": [
+          595.276,
+          0.0
+        ],
+        "top_left": [
+          0.0,
+          841.89
+        ],
+        "top_right": [
+          595.276,
+          841.89
+        ]
+      }
+    }
+  ],
+  "a4-landscape.pdf": [
+    {
+      "media_box": [
+        0,
+        0,
+        841.89,
+        595.276
+      ],
+      "crop_box": [
+        0,
+        0,
+        841.89,
+        595.276
+      ],
+      "rotate": 0,
+      "displayed_size": [
+        841.89,
+        595.276
+      ],
+      "displayed_corners_in_user_space": {
+        "bottom_left": [
+          0,
+          0
+        ],
+        "bottom_right": [
+          841.89,
+          0.0
+        ],
+        "top_left": [
+          0.0,
+          595.276
+        ],
+        "top_right": [
+          841.89,
+          595.276
+        ]
+      }
+    }
+  ],
+  "letter-portrait.pdf": [
+    {
+      "media_box": [
+        0,
+        0,
+        612.0,
+        792.0
+      ],
+      "crop_box": [
+        0,
+        0,
+        612.0,
+        792.0
+      ],
+      "rotate": 0,
+      "displayed_size": [
+        612.0,
+        792.0
+      ],
+      "displayed_corners_in_user_space": {
+        "bottom_left": [
+          0,
+          0
+        ],
+        "bottom_right": [
+          612.0,
+          0.0
+        ],
+        "top_left": [
+          0.0,
+          792.0
+        ],
+        "top_right": [
+          612.0,
+          792.0
+        ]
+      }
+    }
+  ],
+  "letter-landscape.pdf": [
+    {
+      "media_box": [
+        0,
+        0,
+        792.0,
+        612.0
+      ],
+      "crop_box": [
+        0,
+        0,
+        792.0,
+        612.0
+      ],
+      "rotate": 0,
+      "displayed_size": [
+        792.0,
+        612.0
+      ],
+      "displayed_corners_in_user_space": {
+        "bottom_left": [
+          0,
+          0
+        ],
+        "bottom_right": [
+          792.0,
+          0.0
+        ],
+        "top_left": [
+          0.0,
+          612.0
+        ],
+        "top_right": [
+          792.0,
+          612.0
+        ]
+      }
+    }
+  ],
+  "a4-rotate-90.pdf": [
+    {
+      "media_box": [
+        0,
+        0,
+        595.276,
+        841.89
+      ],
+      "crop_box": [
+        0,
+        0,
+        595.276,
+        841.89
+      ],
+      "rotate": 90,
+      "displayed_size": [
+        841.89,
+        595.276
+      ],
+      "displayed_corners_in_user_space": {
+        "bottom_left": [
+          595.276,
+          0
+        ],
+        "bottom_right": [
+          595.276,
+          841.89
+        ],
+        "top_left": [
+          0.0,
+          0.0
+        ],
+        "top_right": [
+          0.0,
+          841.89
+        ]
+      }
+    }
+  ],
+  "a4-rotate-180.pdf": [
+    {
+      "media_box": [
+        0,
+        0,
+        595.276,
+        841.89
+      ],
+      "crop_box": [
+        0,
+        0,
+        595.276,
+        841.89
+      ],
+      "rotate": 180,
+      "displayed_size": [
+        595.276,
+        841.89
+      ],
+      "displayed_corners_in_user_space": {
+        "bottom_left": [
+          595.276,
+          841.89
+        ],
+        "bottom_right": [
+          0.0,
+          841.89
+        ],
+        "top_left": [
+          595.276,
+          0.0
+        ],
+        "top_right": [
+          0.0,
+          0.0
+        ]
+      }
+    }
+  ],
+  "a4-rotate-270.pdf": [
+    {
+      "media_box": [
+        0,
+        0,
+        595.276,
+        841.89
+      ],
+      "crop_box": [
+        0,
+        0,
+        595.276,
+        841.89
+      ],
+      "rotate": 270,
+      "displayed_size": [
+        841.89,
+        595.276
+      ],
+      "displayed_corners_in_user_space": {
+        "bottom_left": [
+          0,
+          841.89
+        ],
+        "bottom_right": [
+          0.0,
+          0.0
+        ],
+        "top_left": [
+          595.276,
+          841.89
+        ],
+        "top_right": [
+          595.276,
+          0.0
+        ]
+      }
+    }
+  ],
+  "a4-cropbox-offset.pdf": [
+    {
+      "media_box": [
+        0,
+        0,
+        700,
+        950
+      ],
+      "crop_box": [
+        60,
+        90,
+        655.276,
+        931.89
+      ],
+      "rotate": 0,
+      "displayed_size": [
+        595.276,
+        841.89
+      ],
+      "displayed_corners_in_user_space": {
+        "bottom_left": [
+          60,
+          90
+        ],
+        "bottom_right": [
+          655.276,
+          90.0
+        ],
+        "top_left": [
+          60.0,
+          931.89
+        ],
+        "top_right": [
+          655.276,
+          931.89
+        ]
+      }
+    }
+  ],
+  "mixed.pdf": [
+    {
+      "media_box": [
+        0,
+        0,
+        595.276,
+        841.89
+      ],
+      "crop_box": [
+        0,
+        0,
+        595.276,
+        841.89
+      ],
+      "rotate": 0,
+      "displayed_size": [
+        595.276,
+        841.89
+      ],
+      "displayed_corners_in_user_space": {
+        "bottom_left": [
+          0,
+          0
+        ],
+        "bottom_right": [
+          595.276,
+          0.0
+        ],
+        "top_left": [
+          0.0,
+          841.89
+        ],
+        "top_right": [
+          595.276,
+          841.89
+        ]
+      }
+    },
+    {
+      "media_box": [
+        0,
+        0,
+        792.0,
+        612.0
+      ],
+      "crop_box": [
+        0,
+        0,
+        792.0,
+        612.0
+      ],
+      "rotate": 0,
+      "displayed_size": [
+        792.0,
+        612.0
+      ],
+      "displayed_corners_in_user_space": {
+        "bottom_left": [
+          0,
+          0
+        ],
+        "bottom_right": [
+          792.0,
+          0.0
+        ],
+        "top_left": [
+          0.0,
+          612.0
+        ],
+        "top_right": [
+          792.0,
+          612.0
+        ]
+      }
+    },
+    {
+      "media_box": [
+        0,
+        0,
+        595.276,
+        841.89
+      ],
+      "crop_box": [
+        0,
+        0,
+        595.276,
+        841.89
+      ],
+      "rotate": 90,
+      "displayed_size": [
+        841.89,
+        595.276
+      ],
+      "displayed_corners_in_user_space": {
+        "bottom_left": [
+          595.276,
+          0
+        ],
+        "bottom_right": [
+          595.276,
+          841.89
+        ],
+        "top_left": [
+          0.0,
+          0.0
+        ],
+        "top_right": [
+          0.0,
+          841.89
+        ]
+      }
+    },
+    {
+      "media_box": [
+        0,
+        0,
+        700,
+        950
+      ],
+      "crop_box": [
+        60,
+        90,
+        655.276,
+        931.89
+      ],
+      "rotate": 180,
+      "displayed_size": [
+        595.276,
+        841.89
+      ],
+      "displayed_corners_in_user_space": {
+        "bottom_left": [
+          655.276,
+          931.89
+        ],
+        "bottom_right": [
+          60.0,
+          931.89
+        ],
+        "top_left": [
+          655.276,
+          90.0
+        ],
+        "top_right": [
+          60.0,
+          90.0
+        ]
+      }
+    },
+    {
+      "media_box": [
+        -50,
+        -40,
+        700,
+        860
+      ],
+      "crop_box": [
+        20,
+        30,
+        632.0,
+        822.0
+      ],
+      "rotate": 270,
+      "displayed_size": [
+        792.0,
+        612.0
+      ],
+      "displayed_corners_in_user_space": {
+        "bottom_left": [
+          20,
+          822.0
+        ],
+        "bottom_right": [
+          20.0,
+          30.0
+        ],
+        "top_left": [
+          632.0,
+          822.0
+        ],
+        "top_right": [
+          632.0,
+          30.0
+        ]
+      }
+    }
+  ],
+  "signed-a4.pdf": [
+    {
+      "media_box": [
+        0,
+        0,
+        595.276,
+        841.89
+      ],
+      "crop_box": [
+        0,
+        0,
+        595.276,
+        841.89
+      ],
+      "rotate": 0,
+      "displayed_size": [
+        595.276,
+        841.89
+      ],
+      "displayed_corners_in_user_space": {
+        "bottom_left": [
+          0,
+          0
+        ],
+        "bottom_right": [
+          595.276,
+          0.0
+        ],
+        "top_left": [
+          0.0,
+          841.89
+        ],
+        "top_right": [
+          595.276,
+          841.89
+        ]
+      }
+    }
+  ],
+  "pdfa-2b-a4.pdf": [
+    {
+      "media_box": [
+        0,
+        0,
+        595.276,
+        841.89
+      ],
+      "crop_box": [
+        0,
+        0,
+        595.276,
+        841.89
+      ],
+      "rotate": 0,
+      "displayed_size": [
+        595.276,
+        841.89
+      ],
+      "displayed_corners_in_user_space": {
+        "bottom_left": [
+          0,
+          0
+        ],
+        "bottom_right": [
+          595.276,
+          0.0
+        ],
+        "top_left": [
+          0.0,
+          841.89
+        ],
+        "top_right": [
+          595.276,
+          841.89
+        ]
+      }
+    }
+  ]
+}
