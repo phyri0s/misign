@@ -7,8 +7,8 @@ All project content is written in English: documentation, code comments, commit 
 - `main` → production: only receives merges from `dev`. Each merge publishes a stable release (`v1.2.0`).
 - `dev` → development: integration branch. Each merge publishes a pre-release (`v1.3.0-dev.4`).
 - Work branches: created from `dev`, named after the Linear issue, then merged into `dev` through a pull request.
-  - `feature/MIS-12-signature-box`
-  - `fix/MIS-20-page-rotation`
+  - `feature/PHY-12-signature-box`
+  - `fix/PHY-20-page-rotation`
 
 `main` and `dev` are protected: no direct pushes, merges only when CI is green. Every change goes through a pull request, even when working solo.
 
