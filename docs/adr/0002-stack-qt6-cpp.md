@@ -9,7 +9,7 @@ Desktop application for Windows and Linux (macOS postponed), with stylus input (
 
 ## Decision
 
-- Qt 6 + C++, built with CMake.
+- Qt 6 + C++, built with CMake. Qt version and installation: see 0006.
 - Development in VS Code, without Qt Creator.
 - QML user interface (proposed).
 - Unit and integration tests with Qt Test, run by CTest.

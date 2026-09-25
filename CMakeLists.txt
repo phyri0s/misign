@@ -22,8 +22,8 @@ set(MISIGN_QT_COMPONENTS Core Gui Qml Quick)
 if(MISIGN_BUILD_TESTS)
     list(APPEND MISIGN_QT_COMPONENTS Test)
 endif()
-find_package(Qt6 6.4 REQUIRED COMPONENTS ${MISIGN_QT_COMPONENTS})
-qt_standard_project_setup()
+find_package(Qt6 6.11 REQUIRED COMPONENTS ${MISIGN_QT_COMPONENTS})
+qt_standard_project_setup(REQUIRES 6.11)
 
 add_subdirectory(src)
 
