@@ -33,6 +33,20 @@ The development environment is provided as a dev container (VS Code or JetBrains
 
 Stylus and touchpad input must always be tested on the host system, including under WSL: the stylus driver stays on the Windows side.
 
+### Build and test
+
+Requirements: CMake 3.25+, Ninja, a C++20 compiler and Qt 6.4+ (Core, Gui, Qml, Quick, Test). Outside the dev container, point CMake at your Qt installation, e.g. `export CMAKE_PREFIX_PATH=~/Qt/6.8.0/gcc_64`, or add a local `CMakeUserPresets.json` (ignored by Git).
+
+```sh
+cmake --preset debug
+cmake --build --preset debug
+ctest --preset debug              # all tests
+ctest --preset debug -L unit      # unit tests only
+./build/debug/src/ui/misign       # run the application
+```
+
+Use the `release` preset for an optimized build. Pass `-DMISIGN_WARNINGS_AS_ERRORS=ON` to fail on compiler warnings.
+
 ## Contributing
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for the Git workflow, commit conventions and the DCO.

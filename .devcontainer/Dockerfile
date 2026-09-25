@@ -6,7 +6,8 @@ RUN apt-get update && export DEBIAN_FRONTEND=noninteractive \
     && apt-get install -y --no-install-recommends \
         cmake ninja-build clang-format clang-tidy \
         qt6-base-dev qt6-declarative-dev qt6-tools-dev qt6-pdf-dev \
-        qml6-module-qtquick qml6-module-qtquick-controls \
+        qml6-module-qtquick qml6-module-qtquick-controls qml6-module-qtquick-templates \
+        qml6-module-qtquick-window qml6-module-qtquick-layouts qml6-module-qtqml-workerscript \
         libfreetype-dev libssl-dev libxml2-dev zlib1g-dev libfontconfig-dev \
         libjpeg-dev libpng-dev libtiff-dev \
         qpdf ghostscript \
