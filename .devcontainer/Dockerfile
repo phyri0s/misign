@@ -33,6 +33,11 @@ RUN python3 -m venv /tmp/aqt \
     && ln -s "$(/tmp/aqt/bin/python /tmp/install_qt.py --output-dir /opt/Qt --print-prefix)" /opt/qt \
     && rm -rf /tmp/aqt /tmp/install_qt.py
 
+# pre-commit, at the version the CI uses (PRE_COMMIT_VERSION in .github/workflows/ci.yml)
+RUN python3 -m venv /opt/pre-commit \
+    && /opt/pre-commit/bin/pip install --no-cache-dir pre-commit==4.6.2 \
+    && ln -s /opt/pre-commit/bin/pre-commit /usr/local/bin/pre-commit
+
 ENV LANG=C.UTF-8 \
     CMAKE_PREFIX_PATH=/opt/qt \
     PATH=/opt/qt/bin:${PATH}

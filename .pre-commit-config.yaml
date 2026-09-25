@@ -1,0 +1,43 @@
+# Local checks (docs/adr/0007-code-style-and-local-checks.md), also run by the
+# "Format" CI job with `pre-commit run --all-files`. Install with:
+#   pre-commit install
+default_install_hook_types: [pre-commit, commit-msg]
+default_stages: [pre-commit]
+
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v6.0.0
+    hooks:
+      # --enforce-all: also check files already tracked, so the check means something in CI.
+      - id: check-added-large-files
+        args: [--enforce-all]
+      - id: check-merge-conflict
+      - id: check-yaml
+      - id: end-of-file-fixer
+      - id: mixed-line-ending
+        args: [--fix=no]
+        exclude: \.(bat|ps1)$
+      - id: trailing-whitespace
+        args: [--markdown-linebreak-ext=md]
+
+  # Same version as the dev container and the CI lint (clang-format 18.1.3).
+  - repo: https://github.com/pre-commit/mirrors-clang-format
+    rev: v18.1.3
+    hooks:
+      - id: clang-format
+        types_or: [c++]
+
+  - repo: local
+    hooks:
+      # Needs Qt's bin directory on PATH (it is in the dev container).
+      - id: qmlformat
+        name: qmlformat
+        entry: qmlformat --inplace
+        language: system
+        files: \.qml$
+
+      - id: commit-message
+        name: commit message (Conventional Commits, DCO sign-off)
+        entry: python scripts/check_commit_message.py
+        language: python
+        stages: [commit-msg]
