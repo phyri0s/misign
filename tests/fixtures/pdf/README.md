@@ -31,6 +31,8 @@ Each page is drawn so that it reads upright once `/Rotate` is applied, as a view
 
 These labels and `manifest.json` give the expected results for screen → PDF coordinate conversion: a point placed at a displayed corner must land at the listed user-space coordinates.
 
+In `manifest.json`, `crop_box` is the effective `CropBox`: when a page has none, the PDF specification makes it default to the `MediaBox`, so `crop_box` then holds the `MediaBox` values. It is always the visible area of the page.
+
 ## Regenerating
 
 Run the script in the dev container, which ships Ghostscript and `qpdf`:
@@ -42,3 +44,5 @@ python3 -m venv ~/.venvs/fixtures
 ```
 
 The geometry fixtures only need the Python standard library and their bytes are deterministic. `signed-a4.pdf` (pyHanko, with a new throwaway key and a new signing time) and `pdfa-2b-a4.pdf` (Ghostscript, with new dates and IDs) change on every run: pass `--skip-signed` or `--skip-pdfa` to leave them untouched. The private key of the test certificate is never written to the repository.
+
+`generate.py --check` writes nothing: it regenerates the deterministic files (geometry fixtures and `manifest.json`) in a temporary directory and fails if they differ from the committed ones. CTest runs it as the `fixtures_up_to_date` test, so changing the script without regenerating the corpus fails the build.

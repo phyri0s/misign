@@ -13,15 +13,26 @@ endfunction()
 add_subdirectory(unit)
 add_subdirectory(integration)
 
-# Every file of the reference corpus must pass `qpdf --check` (see fixtures/pdf/README.md).
+# Reference corpus (see fixtures/pdf/README.md): the committed files must match
+# generate.py, and every file must pass `qpdf --check`.
+set(fixtures_dir "${CMAKE_CURRENT_SOURCE_DIR}/fixtures/pdf")
+
+find_package(Python3 COMPONENTS Interpreter)
+if(Python3_Interpreter_FOUND)
+    add_test(NAME fixtures_up_to_date COMMAND Python3::Interpreter "${fixtures_dir}/generate.py" --check)
+    set_tests_properties(fixtures_up_to_date PROPERTIES LABELS integration)
+else()
+    message(WARNING "Python 3 not found: the reference corpus is not checked against generate.py")
+endif()
+
 find_program(QPDF_EXECUTABLE qpdf)
 if(QPDF_EXECUTABLE)
-    file(GLOB fixtures CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/fixtures/pdf/*.pdf")
+    file(GLOB fixtures CONFIGURE_DEPENDS "${fixtures_dir}/*.pdf")
     foreach(fixture IN LISTS fixtures)
         cmake_path(GET fixture FILENAME name)
         add_test(NAME qpdf_check_${name} COMMAND ${QPDF_EXECUTABLE} --check ${fixture})
         set_tests_properties(qpdf_check_${name} PROPERTIES LABELS integration)
     endforeach()
 else()
-    message(STATUS "qpdf not found: the reference corpus checks are skipped")
+    message(WARNING "qpdf not found: the reference corpus is not checked with qpdf --check")
 endif()

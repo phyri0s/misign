@@ -197,7 +197,7 @@ def write_pdf(path: Path, name: str, pages: list[Page]) -> None:
     data += b"xref\n0 %d\n0000000000 65535 f \n" % (len(objects) + 1)
     for offset in offsets:
         data += b"%010d 00000 n \n" % offset
-    file_id = hashlib.md5(name.encode("utf-8")).hexdigest()
+    file_id = hashlib.md5(name.encode("utf-8"), usedforsecurity=False).hexdigest()
     data += (
         f"trailer\n<< /Size {len(objects) + 1} /Root {catalog} 0 R /ID [<{file_id}> <{file_id}>] >>\n"
         f"startxref\n{xref}\n%%EOF\n"
@@ -320,21 +320,16 @@ def manifest_entry(pages: list[Page]) -> list[dict]:
     ]
 
 
-def main() -> None:
-    parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
-    parser.add_argument("--skip-signed", action="store_true", help="do not regenerate signed-a4.pdf (needs pyHanko)")
-    parser.add_argument("--skip-pdfa", action="store_true", help="do not regenerate pdfa-2b-a4.pdf (needs Ghostscript)")
-    args = parser.parse_args()
-
+def generate(out_dir: Path, skip_signed: bool, skip_pdfa: bool) -> None:
     manifest = {}
     for name, pages in GEOMETRY_FIXTURES.items():
-        write_pdf(HERE / name, name, pages)
+        write_pdf(out_dir / name, name, pages)
         manifest[name] = manifest_entry(pages)
 
     base_pages = [portrait(A4)]
     for name, skip, produce in [
-        ("signed-a4.pdf", args.skip_signed, lambda src, dst: write_signed(src, dst, HERE / "signed-a4.cert.pem")),
-        ("pdfa-2b-a4.pdf", args.skip_pdfa, write_pdfa),
+        ("signed-a4.pdf", skip_signed, lambda src, dst: write_signed(src, dst, out_dir / "signed-a4.cert.pem")),
+        ("pdfa-2b-a4.pdf", skip_pdfa, write_pdfa),
     ]:
         manifest[name] = manifest_entry(base_pages)
         if skip:
@@ -342,9 +337,36 @@ def main() -> None:
         with tempfile.TemporaryDirectory() as tmp:
             source = Path(tmp) / "source.pdf"
             write_pdf(source, name, base_pages)
-            produce(source, HERE / name)
+            produce(source, out_dir / name)
 
-    (HERE / "manifest.json").write_text(json.dumps(manifest, indent=2) + "\n")
+    (out_dir / "manifest.json").write_text(json.dumps(manifest, indent=2) + "\n")
+
+
+def check() -> None:
+    """Regenerate the deterministic files and compare them with the committed ones."""
+    with tempfile.TemporaryDirectory() as tmp:
+        generate(Path(tmp), skip_signed=True, skip_pdfa=True)
+        drifted = sorted(
+            path.name for path in Path(tmp).iterdir()
+            if not (HERE / path.name).is_file() or (HERE / path.name).read_bytes() != path.read_bytes()
+        )
+    if drifted:
+        sys.exit(f"out of date, run generate.py again: {', '.join(drifted)}")
+    print("the committed fixtures match generate.py")
+
+
+def main() -> None:
+    parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
+    parser.add_argument("--skip-signed", action="store_true", help="do not regenerate signed-a4.pdf (needs pyHanko)")
+    parser.add_argument("--skip-pdfa", action="store_true", help="do not regenerate pdfa-2b-a4.pdf (needs Ghostscript)")
+    parser.add_argument("--check", action="store_true",
+                        help="write nothing, fail if the deterministic files differ from generate.py's output")
+    args = parser.parse_args()
+
+    if args.check:
+        check()
+    else:
+        generate(HERE, args.skip_signed, args.skip_pdfa)
 
 
 if __name__ == "__main__":
