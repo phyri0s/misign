@@ -6,6 +6,7 @@ int main(int argc, char *argv[])
     QGuiApplication app(argc, argv);
     QGuiApplication::setApplicationName(QStringLiteral("Misign"));
     QGuiApplication::setOrganizationName(QStringLiteral("Misign"));
+    QGuiApplication::setApplicationVersion(QStringLiteral(MISIGN_VERSION));
 
     QQmlApplicationEngine engine;
     QObject::connect(

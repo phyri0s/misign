@@ -51,8 +51,11 @@ jobs:
           pipx install "pre-commit==$PRE_COMMIT_VERSION"
           pre-commit run --all-files --show-diff-on-failure
 
+      # Only on pull requests to dev: commits reaching main were checked when they
+      # entered dev, and the squash commits GitHub creates there are authored by
+      # the merging account (noreply address), so their sign-offs do not match.
       - name: Check commit messages
-        if: github.event_name == 'pull_request'
+        if: github.event_name == 'pull_request' && github.event.pull_request.base.ref == 'dev'
         env:
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
           HEAD_SHA: ${{ github.event.pull_request.head.sha }}

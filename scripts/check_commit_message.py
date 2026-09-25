@@ -9,6 +9,11 @@ and in CI, on every non-merge commit of a pull request:
 
     check_commit_message.py --range origin/dev..HEAD
 
+and on the pull request title, which becomes the subject of the squash commit
+on dev (subject rules only, no sign-off):
+
+    check_commit_message.py --title "feat: add the signature box"
+
 In range mode the sign-off must also match the commit author, like the DCO
 GitHub app, and fixup!/squash!/amend! commits are rejected: they must be squashed
 before the merge. Merge commits need no sign-off, and commits authored by bots
@@ -40,6 +45,19 @@ def clean(message: str) -> str:
     (`git commit -v`) and comment lines."""
     message = message.split(SCISSORS, 1)[0]
     return "\n".join(line for line in message.splitlines() if not line.startswith("#")).strip()
+
+
+def check_subject(subject: str) -> list[str]:
+    """Conventional Commits and length rules, for a subject written by a person."""
+    errors = []
+    if not SUBJECT.match(subject):
+        errors.append(
+            f"the subject does not follow Conventional Commits: {subject!r}\n"
+            f"    expected '<type>[(scope)][!]: <description>', with type one of: {', '.join(TYPES)}"
+        )
+    if len(subject) > MAX_SUBJECT_LENGTH:
+        errors.append(f"the subject is {len(subject)} characters long (at most {MAX_SUBJECT_LENGTH})")
+    return errors
 
 
 def check(message: str, author_email: str | None = None, is_bot: bool = False,
@@ -94,7 +112,14 @@ def main() -> int:
     group = parser.add_mutually_exclusive_group(required=True)
     group.add_argument("message_file", nargs="?", type=Path, help="commit message file (commit-msg hook)")
     group.add_argument("--range", dest="revision_range", help="check every non-merge commit of this range")
+    group.add_argument("--title", help="check a pull request title (subject rules only)")
     args = parser.parse_args()
+
+    if args.title is not None:
+        errors = check_subject(args.title.strip())
+        for error in errors:
+            print(f"pull request title: {error}", file=sys.stderr)
+        return 1 if errors else 0
 
     if args.revision_range:
         return check_range(args.revision_range)

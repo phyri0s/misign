@@ -1,0 +1,143 @@
+# Builds the installers (ADR 0008): a Linux AppImage and a Windows NSIS installer.
+# Called by the deployment workflows, and run on pull requests that touch the
+# packaging so it is checked before a release needs it.
+name: Package
+
+on:
+  workflow_call:
+    inputs:
+      version-suffix:
+        description: Pre-release suffix appended to the project version, e.g. "-dev.3"
+        type: string
+        default: ""
+  pull_request:
+    branches: [dev, main]
+    paths:
+      - .github/workflows/package.yml
+      - .github/actions/setup-build-deps/action.yml
+      - cmake/MisignPackaging.cmake
+      - packaging/**
+      - scripts/install_qt.py
+      - src/ui/CMakeLists.txt
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  AQTINSTALL_VERSION: "3.3.0"
+  # On pull requests, a dummy suffix exercises the pre-release naming before it
+  # is first needed on dev.
+  VERSION_SUFFIX: ${{ inputs.version-suffix || (github.event_name == 'pull_request' && '-pr') || '' }}
+
+jobs:
+  appimage:
+    name: Linux AppImage
+    # The oldest supported runner: an AppImage only runs on systems whose glibc
+    # is at least as recent as the build system's.
+    runs-on: ubuntu-22.04
+    timeout-minutes: 30
+    env:
+      LINUXDEPLOY_URL: https://github.com/linuxdeploy/linuxdeploy/releases/download/1-alpha-20251107-1/linuxdeploy-x86_64.AppImage
+      LINUXDEPLOY_SHA256: c20cd71e3a4e3b80c3483cef793cda3f4e990aca14014d23c544ca3ce1270b4d
+      LINUXDEPLOY_QT_URL: https://github.com/linuxdeploy/linuxdeploy-plugin-qt/releases/download/1-alpha-20250213-1/linuxdeploy-plugin-qt-x86_64.AppImage
+      LINUXDEPLOY_QT_SHA256: 15106be885c1c48a021198e7e1e9a48ce9d02a86dd0a1848f00bdbf3c1c92724
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      # Nothing links PoDoFo yet: it joins the packages with the PoDoFo adapter.
+      - uses: ./.github/actions/setup-build-deps
+        with:
+          podofo: "false"
+
+      - name: Build
+        env:
+          VERSION_SUFFIX: ${{ env.VERSION_SUFFIX }}
+        run: |
+          cmake --preset release -DMISIGN_BUILD_TESTS=OFF "-DMISIGN_VERSION_SUFFIX=$VERSION_SUFFIX"
+          cmake --build --preset release
+          DESTDIR="$RUNNER_TEMP/AppDir" cmake --install build/release --prefix /usr
+
+      - name: Build the AppImage
+        run: |
+          tools="$RUNNER_TEMP/linuxdeploy"
+          mkdir -p "$tools"
+          curl -sSLf -o "$tools/linuxdeploy" "$LINUXDEPLOY_URL"
+          curl -sSLf -o "$tools/linuxdeploy-plugin-qt" "$LINUXDEPLOY_QT_URL"
+          echo "$LINUXDEPLOY_SHA256  $tools/linuxdeploy" | sha256sum -c -
+          echo "$LINUXDEPLOY_QT_SHA256  $tools/linuxdeploy-plugin-qt" | sha256sum -c -
+          chmod +x "$tools"/*
+
+          version="$(grep -oP 'VERSION \K[0-9.]+(?= # x-release-please-version)' CMakeLists.txt)$VERSION_SUFFIX"
+          qt_prefix="$(python3 scripts/install_qt.py --output-dir ~/Qt --print-prefix)"
+          mkdir -p dist
+          PATH="$tools:$PATH" \
+          APPIMAGE_EXTRACT_AND_RUN=1 \
+          QMAKE="$qt_prefix/bin/qmake" \
+          LD_LIBRARY_PATH="$qt_prefix/lib" \
+          QML_SOURCES_PATHS="$PWD/src/ui" \
+          LDAI_OUTPUT="dist/Misign-$version-linux-x86_64.AppImage" \
+            linuxdeploy --appdir "$RUNNER_TEMP/AppDir" --plugin qt --output appimage
+          ls -l dist
+
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: linux-appimage
+          path: dist/*.AppImage
+          if-no-files-found: error
+
+  windows:
+    name: Windows installer
+    runs-on: windows-2022
+    timeout-minutes: 45
+    # PowerShell rather than Git Bash, whose GNU `link` can shadow MSVC's link.exe.
+    defaults:
+      run:
+        shell: pwsh
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Restore Qt
+        id: qt-cache
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: C:\Qt
+          key: qt-${{ runner.os }}-msvc2022-${{ hashFiles('scripts/install_qt.py') }}-aqt${{ env.AQTINSTALL_VERSION }}
+
+      - name: Install Qt
+        if: steps.qt-cache.outputs.cache-hit != 'true'
+        run: |
+          python -m venv "$env:RUNNER_TEMP\aqt"
+          & "$env:RUNNER_TEMP\aqt\Scripts\pip" install --quiet "aqtinstall==$env:AQTINSTALL_VERSION"
+          & "$env:RUNNER_TEMP\aqt\Scripts\python" scripts/install_qt.py --arch win64_msvc2022_64 --output-dir C:\Qt
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Export CMAKE_PREFIX_PATH
+        run: |
+          $prefix = python scripts/install_qt.py --arch win64_msvc2022_64 --output-dir C:\Qt --print-prefix
+          "CMAKE_PREFIX_PATH=$prefix" >> $env:GITHUB_ENV
+
+      # MSVC compiler, and the CMake and Ninja that ship with Visual Studio.
+      - uses: ilammy/msvc-dev-cmd@0b201ec74fa43914dc39ae48a89fd1d8cb592756 # v1.13.0
+        with:
+          arch: x64
+
+      - name: Build
+        run: |
+          cmake --preset release -DMISIGN_BUILD_TESTS=OFF "-DMISIGN_VERSION_SUFFIX=$env:VERSION_SUFFIX"
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          cmake --build --preset release
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Build the installer
+        working-directory: build/release
+        run: |
+          cpack -G NSIS -B "$env:GITHUB_WORKSPACE\dist"
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          Get-ChildItem "$env:GITHUB_WORKSPACE\dist\*.exe"
+
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: windows-installer
+          path: dist/*.exe
+          if-no-files-found: error

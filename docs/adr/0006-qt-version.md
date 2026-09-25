@@ -23,6 +23,7 @@ Misign is built in three places: the dev container (Linux), CI (Linux and Window
 
 1. The Qt mirrors only publish SHA-1 checksums, while aqtinstall expects SHA-256 by default.
 2. Since Qt 6.8, Qt PDF ships in the "extensions" repository, which aqtinstall cannot install for Qt 6.11. The script downloads it directly, checks its SHA-1 and extracts it into the Qt prefix.
+3. For Qt 6.11 on Windows, the mirror splits the repository into one directory per compiler (`qt6_6113_msvc2022_64/`), which aqtinstall 3.3 (the latest release) cannot find. On Windows the script installs Qt itself the same way as Qt PDF: it reads the repository's `Updates.xml`, downloads the base package and the extra modules, checks each archive's SHA-1 and extracts it into the Qt prefix. Linux still uses aqtinstall.
 
 ## Consequences
 

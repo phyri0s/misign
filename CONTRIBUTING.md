@@ -12,6 +12,11 @@ All project content is written in English: documentation, code comments, commit 
 
 `main` and `dev` are protected: no direct pushes, merges only when CI is green. Every change goes through a pull request, even when working solo.
 
+Merge methods (see [ADR 0008](docs/adr/0008-packaging-and-releases.md)):
+
+- work branches → `dev`: **squash and merge**. The pull request title becomes the commit subject and the changelog entry, so it must follow Conventional Commits (checked by the "PR title" workflow). GitHub's Revert button titles pull requests `Revert "feat: …"`: retitle them `revert: …`;
+- `dev` → `main`, and `main` → `dev` after a release: **merge commit**, never a squash, so that release-please keeps finding the last release.
+
 ## Commits
 
 Commit messages follow [Conventional Commits](https://www.conventionalcommits.org/): `feat:`, `fix:`, `docs:`, `test:`, `refactor:`, `chore:`, `ci:`… The changelog and version numbers are generated from them.
@@ -47,6 +52,17 @@ git ls-files 'src/*.cpp' 'tests/*.cpp' | xargs run-clang-tidy-18 -p build-contai
 # QML
 cmake --build --preset debug --target all_qmllint
 ```
+
+## Releases
+
+- **Pre-releases**: each merge into `dev` publishes a GitHub pre-release `vX.Y.Z-dev.N` with the Linux AppImage and the Windows installer (`deploy-dev.yml`).
+- **Stable releases**: merge `dev` into `main`. release-please then opens (or updates) a release pull request with the new version and `CHANGELOG.md`. Merging it publishes the `vX.Y.Z` release with both installers, and opens a pull request bringing `main` back into `dev`, set to auto-merge with a merge commit once its checks pass. When several merges land on `dev` while a pre-release is being built, only the latest one gets its own pre-release.
+
+release-please needs a GitHub App token, set up once by a repository admin:
+
+1. Create a GitHub App (Settings → Developer settings → GitHub Apps) with no webhook and these repository permissions: Contents *read and write*, Pull requests *read and write*, Issues *read and write* (release-please labels its pull requests).
+2. Install it on this repository only.
+3. In the repository settings, add the app's Client ID as the `RELEASE_APP_CLIENT_ID` Actions variable, and a private key generated for the app as the `RELEASE_APP_PRIVATE_KEY` Actions secret.
 
 ## Dependencies
 

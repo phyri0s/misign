@@ -1,0 +1,106 @@
+# Dev deployment (ADR 0004, ADR 0008): every merge into dev publishes a GitHub
+# pre-release, vX.Y.Z-dev.N, with the Linux AppImage and the Windows installer.
+# X.Y.Z is the next stable version, as release-please would propose it.
+name: Deploy dev
+
+on:
+  push:
+    branches: [dev]
+  workflow_dispatch:
+
+# One deployment at a time, never cancelled: pre-release numbers must not collide.
+concurrency:
+  group: deploy-dev
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  version:
+    name: Version
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+      suffix: ${{ steps.version.outputs.suffix }}
+      tag: ${{ steps.version.outputs.tag }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0 # tags
+
+      - name: Compute the pre-release version
+        id: version
+        shell: bash # -e with pipefail
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          # Dry run: release-please reads the commits on dev and prints the
+          # release pull request it would open ("title: chore(dev): release X.Y.Z").
+          # A failure (network, API limits) must stop the deployment, not silently
+          # fall back to a patch version.
+          if ! output="$(npx --yes release-please@17.11.2 release-pr --dry-run \
+            --token "$GH_TOKEN" --repo-url "$GITHUB_REPOSITORY" --target-branch dev 2>&1)"; then
+            echo "$output"
+            echo "::error::The release-please dry run failed."
+            exit 1
+          fi
+          next="$(sed -n 's/^title: .* release \([0-9][0-9.]*\)$/\1/p' <<< "$output" | head -n 1)"
+          if [ -z "$next" ] && ! grep -q "Would open 0 pull requests" <<< "$output"; then
+            echo "$output"
+            echo "::error::Unexpected release-please dry-run output: no version and no 'Would open 0 pull requests'."
+            exit 1
+          fi
+          if [ -z "$next" ]; then
+            # release-please proposes no release (no user-facing change since the
+            # last one): next patch version.
+            released="$(python3 -c 'import json; print(json.load(open(".release-please-manifest.json")).get(".", ""))')"
+            if [ -n "$released" ]; then
+              IFS=. read -r major minor patch <<< "$released"
+              next="$major.$minor.$((patch + 1))"
+            else
+              next="$(grep -oP 'VERSION \K[0-9.]+(?= # x-release-please-version)' CMakeLists.txt)"
+            fi
+          fi
+          number=$(( $(git tag -l "v$next-dev.*" | wc -l) + 1 ))
+          {
+            echo "version=$next-dev.$number"
+            echo "suffix=-dev.$number"
+            echo "tag=v$next-dev.$number"
+          } >> "$GITHUB_OUTPUT"
+          echo "Pre-release: v$next-dev.$number"
+
+  package:
+    name: Package
+    needs: version
+    uses: ./.github/workflows/package.yml
+    with:
+      version-suffix: ${{ needs.version.outputs.suffix }}
+
+  publish:
+    name: Publish the pre-release
+    needs: [version, package]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          path: dist
+          merge-multiple: true
+
+      - name: Create the GitHub pre-release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ needs.version.outputs.tag }}
+          VERSION: ${{ needs.version.outputs.version }}
+        run: |
+          gh release create "$TAG" dist/* \
+            --repo "$GITHUB_REPOSITORY" \
+            --target "$GITHUB_SHA" \
+            --prerelease \
+            --title "Misign $VERSION" \
+            --generate-notes \
+            --notes "Development build of dev at $GITHUB_SHA. Not for production use."
