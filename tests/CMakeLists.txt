@@ -12,3 +12,16 @@ endfunction()
 
 add_subdirectory(unit)
 add_subdirectory(integration)
+
+# Every file of the reference corpus must pass `qpdf --check` (see fixtures/pdf/README.md).
+find_program(QPDF_EXECUTABLE qpdf)
+if(QPDF_EXECUTABLE)
+    file(GLOB fixtures CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/fixtures/pdf/*.pdf")
+    foreach(fixture IN LISTS fixtures)
+        cmake_path(GET fixture FILENAME name)
+        add_test(NAME qpdf_check_${name} COMMAND ${QPDF_EXECUTABLE} --check ${fixture})
+        set_tests_properties(qpdf_check_${name} PROPERTIES LABELS integration)
+    endforeach()
+else()
+    message(STATUS "qpdf not found: the reference corpus checks are skipped")
+endif()
