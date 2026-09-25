@@ -1,12 +1,22 @@
 version: 2
 updates:
   - package-ecosystem: github-actions
-    directory: /
+    # Workflows, and the composite actions they use.
+    directories:
+      - /
+      - /.github/actions/*
     target-branch: dev
     schedule:
       interval: weekly
+    # Conventional Commits, as checked by scripts/check_commit_message.py.
+    commit-message:
+      prefix: ci
+      include: scope
   - package-ecosystem: devcontainers
     directory: /
     target-branch: dev
     schedule:
       interval: weekly
+    commit-message:
+      prefix: build
+      include: scope

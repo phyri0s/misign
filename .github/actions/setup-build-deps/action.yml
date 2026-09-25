@@ -1,10 +1,14 @@
 name: Set up build dependencies
 description: >
   Install the system packages, Qt (at the version pinned in scripts/install_qt.py)
-  and PoDoFo built from source, both cached, then export CMAKE_PREFIX_PATH.
+  and PoDoFo built from source, both cached, then export CMAKE_PREFIX_PATH and put
+  Qt's tools (qmlformat, qmllint) on PATH.
   Mirrors .devcontainer/Dockerfile: keep both in sync.
 
 inputs:
+  full:
+    description: Also install the system packages and PoDoFo; "false" only sets up Qt's tools
+    default: "true"
   podofo-version:
     description: PoDoFo release to build (Ubuntu 24.04 only ships 0.9.8)
     default: "1.1.2"
@@ -16,6 +20,7 @@ runs:
   using: composite
   steps:
     - name: Install system packages
+      if: inputs.full == 'true'
       shell: bash
       run: |
         sudo apt-get update
@@ -44,6 +49,7 @@ runs:
         "$RUNNER_TEMP/aqt/bin/python" scripts/install_qt.py --output-dir ~/Qt
 
     - name: Restore PoDoFo
+      if: inputs.full == 'true'
       id: podofo-cache
       uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
       with:
@@ -52,7 +58,7 @@ runs:
         key: podofo-${{ inputs.podofo-version }}-${{ runner.os }}-${{ runner.arch }}-ubuntu24.04-${{ hashFiles('.github/actions/setup-build-deps/action.yml') }}
 
     - name: Build PoDoFo
-      if: steps.podofo-cache.outputs.cache-hit != 'true'
+      if: inputs.full == 'true' && steps.podofo-cache.outputs.cache-hit != 'true'
       shell: bash
       run: |
         git clone --depth 1 --branch ${{ inputs.podofo-version }} https://github.com/podofo/podofo.git "$RUNNER_TEMP/podofo"
@@ -61,9 +67,10 @@ runs:
         cmake --build "$RUNNER_TEMP/podofo/build"
         cmake --install "$RUNNER_TEMP/podofo/build"
 
-    - name: Export CMAKE_PREFIX_PATH
+    - name: Export CMAKE_PREFIX_PATH and PATH
       shell: bash
       run: |
         qt_prefix="$(python3 scripts/install_qt.py --output-dir ~/Qt --print-prefix)"
+        echo "$qt_prefix/bin" >> "$GITHUB_PATH"
         echo "CMAKE_PREFIX_PATH=$qt_prefix:$HOME/podofo" >> "$GITHUB_ENV"
         echo "LD_LIBRARY_PATH=$HOME/podofo/lib${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}" >> "$GITHUB_ENV"
