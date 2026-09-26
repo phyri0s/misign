@@ -131,3 +131,5 @@ jobs:
           name: coverage-report
           path: build/coverage/report/
           if-no-files-found: error
+          # Only the latest run's report is useful.
+          retention-days: 14

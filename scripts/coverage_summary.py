@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
-"""Summarize a gcovr JSON summary as a Markdown table, one row per directory.
+"""Summarize a gcovr JSON summary as a Markdown table, one row per layer.
 
 gcovr only summarizes per file or for the whole project; CI writes this table,
-line and branch coverage per directory of src/, to the job summary:
+line and branch coverage per layer of src/ (domain, application, adapters, ui),
+to the job summary. Files in subdirectories count toward their layer:
 
     gcovr build/coverage --json-summary build/coverage/summary.json
     coverage_summary.py build/coverage/summary.json >> "$GITHUB_STEP_SUMMARY"
@@ -25,11 +26,17 @@ def cell(covered: int, total: int) -> str:
     return f"{percent(covered, total)} ({covered}/{total})"
 
 
+def layer(filename: str) -> str:
+    """The first two path components, e.g. src/domain for src/domain/signature/x.cpp."""
+    path = PurePosixPath(filename)
+    return str(PurePosixPath(*path.parts[:2])) if len(path.parts) > 2 else str(path.parent)
+
+
 def summarize(summary: dict) -> str:
-    # [lines covered, lines total, branches covered, branches total] per directory.
+    # [lines covered, lines total, branches covered, branches total] per layer.
     directories: dict[str, list[int]] = defaultdict(lambda: [0, 0, 0, 0])
     for entry in summary["files"]:
-        directory = str(PurePosixPath(entry["filename"]).parent)
+        directory = layer(entry["filename"])
         counts = directories[directory]
         counts[0] += entry["line_covered"]
         counts[1] += entry["line_total"]
@@ -39,7 +46,7 @@ def summarize(summary: dict) -> str:
     rows = [
         "## Code coverage",
         "",
-        "| Directory | Lines | Branches |",
+        "| Layer | Lines | Branches |",
         "|---|---:|---:|",
     ]
     for directory in sorted(directories):

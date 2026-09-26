@@ -82,11 +82,11 @@ Coverage needs GCC and [gcovr](https://gcovr.com/) (`pipx install gcovr`, alread
 cmake --preset coverage
 cmake --build --preset coverage
 ctest --preset coverage
-mkdir -p build/coverage/report
-gcovr build/coverage --html-nested build/coverage/report/index.html   # prints the totals
+mkdir -p build$MISIGN_BUILD_SUFFIX/coverage/report
+gcovr build$MISIGN_BUILD_SUFFIX/coverage --html-nested build$MISIGN_BUILD_SUFFIX/coverage/report/index.html   # prints the totals
 ```
 
-Open `build/coverage/report/index.html` for the per-directory and per-line view (`build-container/` in the dev container). On pull requests, the "Coverage" CI job writes the summary to the run page and publishes the HTML report as the `coverage-report` artifact.
+`MISIGN_BUILD_SUFFIX` is empty on the host and `-container` in the dev container, so the report lands in `build/coverage/report/` or `build-container/coverage/report/`. Open its `index.html` for the per-directory and per-line view. On pull requests, the "Coverage" CI job writes the summary to the run page and publishes the HTML report as the `coverage-report` artifact.
 
 ## Contributing
 
