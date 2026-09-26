@@ -1,4 +1,4 @@
-# Pull request CI (ADR 0004): format, lint, build and tests, on Linux only.
+# Pull request CI (ADR 0004): format, lint, build, tests and coverage (ADR 0009), on Linux only.
 # Windows builds are reserved for the deployment workflows.
 name: CI
 
@@ -23,6 +23,7 @@ env:
   # (.devcontainer/Dockerfile). clang-format is pinned in .pre-commit-config.yaml.
   LLVM_VERSION: "18"
   PRE_COMMIT_VERSION: "4.6.2"
+  GCOVR_VERSION: "8.6"
 
 jobs:
   format:
@@ -92,3 +93,41 @@ jobs:
 
       - name: Integration tests
         run: ctest --preset debug -L integration
+
+  # A separate job (ADR 0009): the instrumented build runs in parallel with the main
+  # check instead of slowing it down. Coverage is reported, not enforced.
+  coverage:
+    name: Coverage
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    env:
+      QT_QPA_PLATFORM: offscreen
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - uses: ./.github/actions/setup-build-deps
+
+      - name: Configure
+        run: cmake --preset coverage -DMISIGN_REQUIRE_TEST_TOOLS=ON
+
+      - name: Build
+        run: cmake --build --preset coverage
+
+      - name: Tests
+        run: ctest --preset coverage
+
+      # Settings in gcovr.cfg: only src/ is reported.
+      - name: Coverage report
+        run: |
+          pipx install "gcovr==$GCOVR_VERSION"
+          mkdir -p build/coverage/report
+          gcovr build/coverage \
+            --html-nested build/coverage/report/index.html \
+            --json-summary build/coverage/summary.json
+          python3 scripts/coverage_summary.py build/coverage/summary.json >> "$GITHUB_STEP_SUMMARY"
+
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: coverage-report
+          path: build/coverage/report/
+          if-no-files-found: error
