@@ -54,7 +54,7 @@ The `tst_page_geometry` unit test builds every page from `media_box`, `crop_box`
 Checked when the files were added, with `QPdfDocument` (not part of the test suite):
 
 - `QPdfDocument::pagePointSize` matches `displayed_size` on every page of `a4-rotate-unusual.pdf`, `inherited-attributes.pdf` and `degenerate-boxes.pdf`, and every rendered page reads upright: Qt PDF follows page tree inheritance and the PDFium reading of `/Rotate`.
-- Qt PDF ignores `UserUnit`: it gives `a4-userunit-2.pdf` a size of 297.638 × 420.945 points, half of A4, while Ghostscript renders it A4. Placement in user space is not affected; only the physical size, and so stroke widths expressed in points, would be. What Misign does on such pages is decided in PHY-88.
+- Qt PDF ignores `UserUnit`: it gives `a4-userunit-2.pdf` a size of 297.638 × 420.945 points, half of A4, while Ghostscript renders it A4. Placement in user space is not affected; only the physical size, and so stroke widths expressed in points, would be. Misign ignores `UserUnit` like Qt PDF ([ADR 0010](../../../docs/adr/0010-userunit.md)).
 
 ## Regenerating
 
