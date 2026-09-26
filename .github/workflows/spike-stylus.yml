@@ -1,6 +1,6 @@
-# PHY-97 spike: builds the stylus probe for Windows, where there is no local
-# toolchain, so it can be run on a machine with a stylus. Throwaway: delete this
-# workflow with the spike.
+# PHY-97 spike: builds the stylus probe for Windows (no local toolchain there)
+# and as a Linux AppImage, so it can be run on machines with a stylus without
+# installing Qt. Throwaway: delete this workflow with the spike.
 name: Spike stylus probe
 
 on:
@@ -18,6 +18,64 @@ env:
   AQTINSTALL_VERSION: "3.3.0"
 
 jobs:
+  linux:
+    name: Linux stylus probe
+    # As for the Misign AppImage: the oldest runner, for glibc compatibility.
+    runs-on: ubuntu-22.04
+    timeout-minutes: 30
+    env:
+      LINUXDEPLOY_URL: https://github.com/linuxdeploy/linuxdeploy/releases/download/1-alpha-20251107-1/linuxdeploy-x86_64.AppImage
+      LINUXDEPLOY_SHA256: c20cd71e3a4e3b80c3483cef793cda3f4e990aca14014d23c544ca3ce1270b4d
+      LINUXDEPLOY_QT_URL: https://github.com/linuxdeploy/linuxdeploy-plugin-qt/releases/download/1-alpha-20250213-1/linuxdeploy-plugin-qt-x86_64.AppImage
+      LINUXDEPLOY_QT_SHA256: 15106be885c1c48a021198e7e1e9a48ce9d02a86dd0a1848f00bdbf3c1c92724
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - uses: ./.github/actions/setup-build-deps
+        with:
+          podofo: "false"
+
+      - name: Build
+        run: |
+          cmake -S spikes/phy-97-stylus-input -B build-spike -G Ninja -DCMAKE_BUILD_TYPE=Release
+          cmake --build build-spike
+          install -Dm755 build-spike/stylus-probe "$RUNNER_TEMP/AppDir/usr/bin/stylus-probe"
+          printf '%s\n' '[Desktop Entry]' 'Type=Application' 'Name=Stylus probe' \
+            'Exec=stylus-probe' 'Icon=misign' 'Terminal=true' 'Categories=Development;' \
+            > "$RUNNER_TEMP/stylus-probe.desktop"
+
+      # X11 and Wayland, since the tablet protocols differ.
+      - name: Build the AppImage
+        run: |
+          tools="$RUNNER_TEMP/linuxdeploy"
+          mkdir -p "$tools"
+          curl -sSLf -o "$tools/linuxdeploy" "$LINUXDEPLOY_URL"
+          curl -sSLf -o "$tools/linuxdeploy-plugin-qt" "$LINUXDEPLOY_QT_URL"
+          echo "$LINUXDEPLOY_SHA256  $tools/linuxdeploy" | sha256sum -c -
+          echo "$LINUXDEPLOY_QT_SHA256  $tools/linuxdeploy-plugin-qt" | sha256sum -c -
+          chmod +x "$tools"/*
+
+          qt_prefix="$(python3 scripts/install_qt.py --output-dir ~/Qt --print-prefix)"
+          mkdir -p dist
+          PATH="$tools:$PATH" \
+          APPIMAGE_EXTRACT_AND_RUN=1 \
+          QMAKE="$qt_prefix/bin/qmake" \
+          LD_LIBRARY_PATH="$qt_prefix/lib" \
+          QML_SOURCES_PATHS="$PWD/spikes/phy-97-stylus-input" \
+          EXTRA_PLATFORM_PLUGINS="libqwayland.so" \
+          EXTRA_QT_PLUGINS="wayland-shell-integration;wayland-decoration-client;wayland-graphics-integration-client" \
+          LDAI_OUTPUT="dist/stylus-probe-linux-x86_64.AppImage" \
+            linuxdeploy --appdir "$RUNNER_TEMP/AppDir" --plugin qt --output appimage \
+              --desktop-file "$RUNNER_TEMP/stylus-probe.desktop" --icon-file packaging/icons/misign.svg
+          find "$RUNNER_TEMP/AppDir/usr/plugins/platforms" -name '*.so'
+
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: stylus-probe-linux
+          path: dist/*.AppImage
+          if-no-files-found: error
+          retention-days: 14
+
   windows:
     name: Windows stylus probe
     runs-on: windows-2022
