@@ -31,4 +31,4 @@ Ignore `UserUnit`. Misign works in user-space units from end to end, and the PDF
 - On a `UserUnit` page the physical size of the signature on paper differs from the same signature on a regular page, by the same factor as the page itself. Given how rare these pages are in documents to sign, this is accepted.
 - At 100 % zoom such a page appears at its size in user units, not its physical size, as in any Qt PDF viewer.
 - The PoDoFo adapter's integration tests must include `a4-userunit-2.pdf` and check that the drawn box lands where it was placed, in user space, with `/UserUnit` left unchanged.
-- Acrobat Reader was not checked. If it turns out to treat these pages in a way that breaks this reasoning, the decision should be reopened.
+- Acrobat Reader was not checked. Adobe introduced `UserUnit`, so Acrobat most likely honours it like Ghostscript, which the options above already cover: page and signature are scaled together. What remains to check is that it does nothing else, such as scaling annotations differently from page content. If it does, the decision should be reopened.
