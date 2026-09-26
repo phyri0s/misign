@@ -186,13 +186,13 @@ void TestSignature::movesASingleDotToTheCentre()
 void TestSignature::staysUprightOnARotatedPage()
 {
     const PageGeometry page({0.0, 0.0, 595.276, 841.89}, std::nullopt, Rotation::Clockwise90);
-    constexpr double scale = 2.0; // Pixels per point.
+    constexpr double kScale = 2.0; // Pixels per point.
     const ScreenRect selection{200.0, 300.0, 600.0, 400.0};
     // The same box in displayed coordinates (y up from the displayed bottom).
-    const double displayedTop = page.displayedHeight() - (selection.top / scale);
-    const PdfRect box{selection.left / scale,
-                      displayedTop - ((selection.bottom - selection.top) / scale),
-                      selection.right / scale, displayedTop};
+    const double displayedTop = page.displayedHeight() - (selection.top / kScale);
+    const PdfRect box{selection.left / kScale,
+                      displayedTop - ((selection.bottom - selection.top) / kScale),
+                      selection.right / kScale, displayedTop};
     const Signature sig = signature({stroke({{0.0, 0.0}, {200.0, 50.0}})});
 
     const AffineMatrix fit = fitted(sig, box);
@@ -201,9 +201,9 @@ void TestSignature::staysUprightOnARotatedPage()
     };
 
     QVERIFY(near(toUserSpace({0.0, 0.0}),
-                 page.toUser(ScreenPoint{selection.left, selection.top}, scale)));
+                 page.toUser(ScreenPoint{selection.left, selection.top}, kScale)));
     QVERIFY(near(toUserSpace({200.0, 50.0}),
-                 page.toUser(ScreenPoint{selection.right, selection.bottom}, scale)));
+                 page.toUser(ScreenPoint{selection.right, selection.bottom}, kScale)));
 }
 
 QTEST_APPLESS_MAIN(TestSignature)
