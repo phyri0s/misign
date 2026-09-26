@@ -64,11 +64,11 @@ public:
     {
     }
 
-    std::vector<CubicBezier> fit()
+    std::vector<CubicBezier> fit(double tangentReach)
     {
         const std::size_t last = m_samples.size() - 1;
-        const ScreenPoint startTangent = normalized(position(1) - position(0));
-        const ScreenPoint endTangent = normalized(position(last - 1) - position(last));
+        const ScreenPoint startTangent = endTangent(0, 1, tangentReach);
+        const ScreenPoint endTangent = this->endTangent(last, -1, tangentReach);
         // Depth first with an explicit stack (no recursion): a range that does
         // not fit is replaced by its two halves, the left one on top, so the
         // segments come out in stroke order.
@@ -99,6 +99,19 @@ private:
     };
 
     [[nodiscard]] ScreenPoint position(std::size_t i) const { return m_samples[i].position; }
+
+    // The tangent at an end of the stroke, towards the first sample at least
+    // `reach` away (or the far end): from the next sample alone, whole-pixel
+    // input only gives 8 directions.
+    [[nodiscard]] ScreenPoint endTangent(std::size_t end, int step, double reach) const
+    {
+        const std::size_t stop = step > 0 ? m_samples.size() - 1 : 0;
+        std::size_t i = step > 0 ? end + 1 : end - 1;
+        while (i != stop && length(position(i) - position(end)) < reach) {
+            i = step > 0 ? i + 1 : i - 1;
+        }
+        return normalized(position(i) - position(end));
+    }
 
     [[nodiscard]] CubicBezier segment(std::size_t first, std::size_t last, ScreenPoint control1,
                                       ScreenPoint control2) const
@@ -191,7 +204,16 @@ private:
         }
         const double chord = length(p3 - p0);
         const double epsilon = 1e-6 * chord;
-        if (alpha1 < epsilon || alpha2 < epsilon) {
+        // Also fall back when a handle is longer than the chord, or when the
+        // handles, projected on the chord, cross over (Paper.js's PathFitter
+        // guard). On a few samples around a tight turn, least squares can
+        // return long handles that bulge or loop between the samples, where
+        // maxError does not look: e.g. 162 px for a 7 px chord at a corner,
+        // where the split tangent points away from the stroke.
+        const ScreenPoint line = p3 - p0;
+        const bool crossed =
+            dot(startTangent * alpha1, line) - dot(endTangent * alpha2, line) > chord * chord;
+        if (alpha1 < epsilon || alpha2 < epsilon || alpha1 > chord || alpha2 > chord || crossed) {
             alpha1 = chord / 3.0;
             alpha2 = alpha1;
         }
@@ -283,7 +305,7 @@ std::vector<CubicBezier> smooth(const Stroke &stroke, const SmoothingOptions &op
         const ScreenPoint p = samples.front().position;
         return {CubicBezier{p, p, p, p, 0, points.size() - 1}};
     }
-    return Fitter(samples, options.tolerance).fit();
+    return Fitter(samples, options.tolerance).fit(3.0 * options.minSpacing);
 }
 
 } // namespace misign::domain

@@ -31,15 +31,22 @@ struct SmoothingOptions {
     // Input points closer than this to the previous kept point are dropped:
     // duplicates and sub-pixel jitter (drawing-surface units).
     double minSpacing = 0.5;
-    // Every kept input point lies within this distance of the curve. One
-    // logical pixel absorbs the whole-pixel stair steps of the input (PHY-97).
+    // Every kept input point lies within this distance of the curve. Window
+    // positions from Windows Ink are whole pixels; the adapter should get
+    // sub-pixel ones from globalPosition() (PHY-97, to be confirmed in
+    // PHY-109). One logical pixel absorbs the stair steps either way.
     double tolerance = 1.0;
 };
 
 // Turns a stroke into a chain of cubic Bézier segments, fitted to its points
 // with a bounded error (Schneider, "An Algorithm for Automatically Fitting
-// Digitized Curves", Graphics Gems, 1990). The chain starts at the first point
-// and ends at the last, and is continuous in position and tangent direction.
+// Digitized Curves", Graphics Gems, 1990), with Paper.js's guard against
+// crossed-over handles. End tangents are estimated over 3 × minSpacing, not
+// from the next point alone. The chain starts at the first point
+// and ends at the last, and is continuous in position and tangent direction,
+// except at the stroke's own cusps (where it doubles back on itself, the
+// tangent is zero) and for a dot. Drawing code must not assume a non-zero
+// tangent everywhere.
 // Fewer segments than points: the content stream stays small.
 //
 // A one-point stroke (or one whose points all fall within minSpacing) gives a

@@ -2,7 +2,10 @@
 
 #include <QTest>
 
+#include <algorithm>
 #include <cmath>
+#include <cstdint>
+#include <limits>
 #include <numbers>
 #include <vector>
 
@@ -30,8 +33,8 @@ Stroke strokeThrough(const std::vector<ScreenPoint> &positions)
 }
 
 // A signature-like loop sampled every few pixels and rounded to whole pixels,
-// as Windows Ink delivers window positions (PHY-97), plus a deterministic
-// jitter of up to half a pixel.
+// as Windows Ink delivers window positions (the adapter should get sub-pixel
+// ones, PHY-97), plus a deterministic jitter of up to half a pixel.
 std::vector<ScreenPoint> jitteryLoop()
 {
     std::vector<ScreenPoint> positions;
@@ -53,7 +56,7 @@ double distance(ScreenPoint a, ScreenPoint b)
 // Distance from a point to the chain, sampling each segment finely.
 double distanceToChain(ScreenPoint p, const std::vector<CubicBezier> &chain)
 {
-    double best = INFINITY;
+    double best = std::numeric_limits<double>::infinity();
     for (const CubicBezier &segment : chain) {
         constexpr int kSteps = 400;
         for (int i = 0; i <= kSteps; ++i) {
@@ -61,6 +64,31 @@ double distanceToChain(ScreenPoint p, const std::vector<CubicBezier> &chain)
         }
     }
     return best;
+}
+
+// How far the chain goes outside the bounding box of the input positions.
+double overshoot(const std::vector<CubicBezier> &chain, const std::vector<ScreenPoint> &positions)
+{
+    constexpr double kInfinity = std::numeric_limits<double>::infinity();
+    double left = kInfinity;
+    double top = kInfinity;
+    double right = -kInfinity;
+    double bottom = -kInfinity;
+    for (const ScreenPoint &p : positions) {
+        left = std::min(left, p.x);
+        top = std::min(top, p.y);
+        right = std::max(right, p.x);
+        bottom = std::max(bottom, p.y);
+    }
+    double worst = 0.0;
+    for (const CubicBezier &segment : chain) {
+        constexpr int kSteps = 100;
+        for (int i = 0; i <= kSteps; ++i) {
+            const ScreenPoint q = segment.at(static_cast<double>(i) / kSteps);
+            worst = std::max({worst, left - q.x, q.x - right, top - q.y, q.y - bottom});
+        }
+    }
+    return worst;
 }
 
 bool allFinite(const std::vector<CubicBezier> &chain)
@@ -91,6 +119,9 @@ private slots:
     void survivesDuplicatesAndSharpCorners();
     void segmentsPointBackToTheirInputPoints();
     void segmentsCoverTheStrokeInOrder();
+    void doesNotBulgeAtATightCorner();
+    void staysCloseOnRandomZigzags();
+    void startsAlongTheStrokeNotItsFirstPixelStep();
 };
 
 void TestSmoothing::emptyStrokeGivesNothing()
@@ -217,6 +248,60 @@ void TestSmoothing::segmentsCoverTheStrokeInOrder()
         QVERIFY(chain[i].firstPoint < chain[i].lastPoint);
         QCOMPARE(chain[i].firstPoint, chain[i - 1].lastPoint);
     }
+}
+
+// Three points turning a corner: the tangent shared at the split points away
+// from the stroke, and least squares answered with a 162 px handle on a 7 px
+// chord, sending the curve 72 px outside the input. Handles longer than the
+// chord now fall back to a third of it.
+void TestSmoothing::doesNotBulgeAtATightCorner()
+{
+    const std::vector<ScreenPoint> positions{{0.0, 0.0}, {8.0, 6.0}, {8.0, -1.0}, {7.0, -1.0}};
+
+    QVERIFY(overshoot(smooth(strokeThrough(positions)), positions) <= kTolerance);
+}
+
+// Short strokes with random steps of up to 8 px each way, the worst case for
+// a smooth fit: the curve may round the turns off, but never goes more than
+// one step outside the input.
+void TestSmoothing::staysCloseOnRandomZigzags()
+{
+    constexpr int kStep = 8;
+    std::uint32_t state = 12345; // Deterministic: a fixed linear congruential sequence.
+    const auto next = [&state] {
+        state = (state * 1664525U) + 1013904223U;
+        return static_cast<int>((state >> 16U) % (2 * kStep + 1)) - kStep;
+    };
+    double worst = 0.0;
+    for (int trial = 0; trial < 2000; ++trial) {
+        std::vector<ScreenPoint> positions{{0.0, 0.0}};
+        for (int i = 0; i < 3 + (trial % 8); ++i) {
+            positions.push_back({positions.back().x + next(), positions.back().y + next()});
+        }
+        const auto chain = smooth(strokeThrough(positions));
+        QVERIFY(allFinite(chain));
+        worst = std::max(worst, overshoot(chain, positions));
+    }
+    QVERIFY2(worst <= kStep, qPrintable(QStringLiteral("worst overshoot %1 px").arg(worst)));
+}
+
+// A slow start at about 27 degrees, in whole-pixel steps: the first step is
+// horizontal. The start tangent follows the stroke, not that first step.
+void TestSmoothing::startsAlongTheStrokeNotItsFirstPixelStep()
+{
+    std::vector<ScreenPoint> positions;
+    positions.reserve(20);
+    for (int i = 0; i < 20; ++i) {
+        positions.push_back({static_cast<double>(i), std::floor(i / 2.0)});
+    }
+
+    const CubicBezier first = smooth(strokeThrough(positions)).front();
+
+    const double angle =
+        std::atan2(first.control1.y - first.start.y, first.control1.x - first.start.x) * 180.0 /
+        std::numbers::pi;
+    QVERIFY2(std::abs(angle - 26.57) < 10.0,
+             qPrintable(QStringLiteral("starts at %1 degrees").arg(angle)));
 }
 
 QTEST_APPLESS_MAIN(TestSmoothing)
