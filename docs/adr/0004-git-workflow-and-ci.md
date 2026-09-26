@@ -13,7 +13,7 @@
 
 | Pipeline | Trigger | Steps | Result |
 |---|---|---|---|
-| CI | Pull request to `dev` or `main` | Format, lint, build, unit tests, integration tests | Merge blocked if a test fails |
+| CI | Pull request to `dev` or `main` | Format, lint, build, unit tests, integration tests, coverage report (ADR 0009) | Merge blocked if a test fails |
 | Dev deployment | Merge into `dev` | Windows and Linux builds, installers, GitHub pre-release (see ADR 0008) | Test build |
 | Prod deployment | Merge into `main` | SemVer tag, Windows and Linux builds, installers, stable GitHub Release with changelog | Public release |
 | Maintenance | Weekly | Dependabot, CodeQL | Up-to-date dependencies, detected vulnerabilities |

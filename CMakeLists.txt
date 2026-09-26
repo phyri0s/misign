@@ -18,10 +18,12 @@ set(MISIGN_VERSION_SUFFIX "" CACHE STRING "Pre-release suffix appended to the pr
 set(MISIGN_VERSION "${PROJECT_VERSION}${MISIGN_VERSION_SUFFIX}")
 
 option(MISIGN_REQUIRE_TEST_TOOLS "Fail the configuration when qpdf or Python 3 is missing, instead of skipping their tests" OFF)
+option(MISIGN_COVERAGE "Instrument the build for code coverage (GCC only)" OFF)
 
 list(APPEND CMAKE_MODULE_PATH "${PROJECT_SOURCE_DIR}/cmake")
 include(MisignWarnings)
 include(MisignDependencyRules)
+include(MisignCoverage)
 
 set(MISIGN_QT_COMPONENTS Core Gui Qml Quick)
 if(MISIGN_BUILD_TESTS)

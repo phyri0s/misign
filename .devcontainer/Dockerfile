@@ -38,6 +38,11 @@ RUN python3 -m venv /opt/pre-commit \
     && /opt/pre-commit/bin/pip install --no-cache-dir pre-commit==4.6.2 \
     && ln -s /opt/pre-commit/bin/pre-commit /usr/local/bin/pre-commit
 
+# gcovr, at the version the CI uses (GCOVR_VERSION in .github/workflows/ci.yml)
+RUN python3 -m venv /opt/gcovr \
+    && /opt/gcovr/bin/pip install --no-cache-dir gcovr==8.6 \
+    && ln -s /opt/gcovr/bin/gcovr /usr/local/bin/gcovr
+
 ENV LANG=C.UTF-8 \
     CMAKE_PREFIX_PATH=/opt/qt \
     PATH=/opt/qt/bin:${PATH}
