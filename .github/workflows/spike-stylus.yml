@@ -1,0 +1,72 @@
+# PHY-97 spike: builds the stylus probe for Windows, where there is no local
+# toolchain, so it can be run on a machine with a stylus. Throwaway: delete this
+# workflow with the spike.
+name: Spike stylus probe
+
+on:
+  pull_request:
+    branches: [dev]
+    paths:
+      - spikes/phy-97-stylus-input/**
+      - .github/workflows/spike-stylus.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  AQTINSTALL_VERSION: "3.3.0"
+
+jobs:
+  windows:
+    name: Windows stylus probe
+    runs-on: windows-2022
+    timeout-minutes: 45
+    defaults:
+      run:
+        shell: pwsh
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      # Same cache as the Windows installer build (package.yml).
+      - name: Restore Qt
+        id: qt-cache
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: C:\Qt
+          key: qt-${{ runner.os }}-msvc2022-${{ hashFiles('scripts/install_qt.py') }}-aqt${{ env.AQTINSTALL_VERSION }}
+
+      - name: Install Qt
+        if: steps.qt-cache.outputs.cache-hit != 'true'
+        run: |
+          python -m venv "$env:RUNNER_TEMP\aqt"
+          & "$env:RUNNER_TEMP\aqt\Scripts\pip" install --quiet "aqtinstall==$env:AQTINSTALL_VERSION"
+          & "$env:RUNNER_TEMP\aqt\Scripts\python" scripts/install_qt.py --arch win64_msvc2022_64 --output-dir C:\Qt
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Export CMAKE_PREFIX_PATH
+        run: |
+          $prefix = python scripts/install_qt.py --arch win64_msvc2022_64 --output-dir C:\Qt --print-prefix
+          "CMAKE_PREFIX_PATH=$prefix" >> $env:GITHUB_ENV
+
+      - uses: ilammy/msvc-dev-cmd@0b201ec74fa43914dc39ae48a89fd1d8cb592756 # v1.13.0
+        with:
+          arch: x64
+
+      - name: Build and deploy
+        run: |
+          cmake -S spikes/phy-97-stylus-input -B build-spike -G Ninja -DCMAKE_BUILD_TYPE=Release
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          cmake --build build-spike
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          New-Item -ItemType Directory dist | Out-Null
+          Copy-Item build-spike\stylus-probe.exe dist\
+          & "$env:CMAKE_PREFIX_PATH\bin\windeployqt.exe" --release --qmldir spikes/phy-97-stylus-input dist\stylus-probe.exe
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: stylus-probe-windows
+          path: dist/
+          if-no-files-found: error
+          retention-days: 14
