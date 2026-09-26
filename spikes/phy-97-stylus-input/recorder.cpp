@@ -61,13 +61,15 @@ bool isContact(const QPointerEvent *event, const QEventPoint &point)
     }
 }
 
-double median(QList<double> values)
+// Event class: "Tablet", "Mouse", "Touch", or the event name for the others.
+QString eventClass(const QString &event)
 {
-    if (values.isEmpty()) {
-        return 0.0;
+    for (const auto *prefix : {"Tablet", "Mouse", "Touch"}) {
+        if (event.startsWith(QLatin1String(prefix))) {
+            return QLatin1String(prefix);
+        }
     }
-    std::sort(values.begin(), values.end());
-    return values.at(values.size() / 2);
+    return event;
 }
 
 } // namespace
@@ -174,6 +176,15 @@ void Recorder::append(Sample sample)
     emit changed();
 }
 
+void Recorder::mark(const QString &label)
+{
+    Sample sample{};
+    sample.elapsedMs = static_cast<double>(m_clock.nsecsElapsed()) / 1e6;
+    sample.source = QStringLiteral("marker");
+    sample.event = label;
+    append(std::move(sample));
+}
+
 void Recorder::clear()
 {
     m_samples.clear();
@@ -197,10 +208,12 @@ QString Recorder::summary() const
     };
     QMap<QString, Group> groups;
     for (const Sample &s : m_samples) {
+        // Split by event class too: Qt sends mouse events synthesized from the
+        // stylus with the stylus device, microseconds after the tablet event.
         const QString key = s.source + QStringLiteral(" | ") +
                             (s.device.isEmpty() ? QStringLiteral("-") : s.device) +
                             QStringLiteral(" | ") + s.deviceType + QStringLiteral("/") +
-                            s.pointerType;
+                            s.pointerType + QStringLiteral(" | ") + eventClass(s.event);
         Group &g = groups[key];
         ++g.samples;
         g.events.insert(s.event);
@@ -229,7 +242,14 @@ QString Recorder::summary() const
         const Group &g = it.value();
         QStringList events(g.events.cbegin(), g.events.cend());
         events.sort();
-        const double interval = median(g.intervals);
+        // Events arrive in bursts when the GUI thread is busy, so a median gap
+        // means little: report the mean rate over drawing time and the longest gap.
+        double drawingMs = 0.0;
+        double longestGap = 0.0;
+        for (const double gap : g.intervals) {
+            drawingMs += gap;
+            longestGap = std::max(longestGap, gap);
+        }
         out << "\n" << it.key() << "\n";
         out << "  samples " << g.samples << ", in contact " << g.contact << "\n";
         out << "  events: " << events.join(QStringLiteral(", ")) << "\n";
@@ -240,11 +260,10 @@ QString Recorder::summary() const
             out << "  pressure " << g.minPressure << " .. " << g.maxPressure << " ("
                 << g.pressures.size() << " distinct values)" << (g.tilt ? ", tilt reported" : "")
                 << "\n";
-            out << "  median interval in contact " << interval << " ms";
-            if (interval > 0.0) {
-                out << " (~" << qRound(1000.0 / interval) << " Hz)";
+            if (drawingMs > 0.0) {
+                out << "  ~" << qRound(static_cast<double>(g.intervals.size()) * 1000.0 / drawingMs)
+                    << " events/s while drawing, longest gap " << qRound(longestGap) << " ms\n";
             }
-            out << "\n";
         }
     }
     return text;

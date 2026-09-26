@@ -53,6 +53,9 @@ public:
     Q_INVOKABLE void recordHandler(const QString &handler, double x, double y, double pressure,
                                    bool pressed);
     Q_INVOKABLE void clear();
+    // Records a marker in the log, e.g. "touchpad" before touchpad input: Qt
+    // reports the mouse and the touchpad as the same device on Windows.
+    Q_INVOKABLE void mark(const QString &label);
     // Writes the CSV log and the summary; returns the log path.
     Q_INVOKABLE QString save();
 

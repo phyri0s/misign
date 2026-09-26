@@ -16,4 +16,9 @@ qt_add_qml_module(stylus-probe
     QML_FILES Main.qml
 )
 target_link_libraries(stylus-probe PRIVATE Qt6::Gui Qt6::Qml Qt6::Quick)
+# QWindowsApplication::setWinTabEnabled, the only way to turn Wintab on in Qt 6.11.
+if(WIN32)
+    find_package(Qt6 REQUIRED COMPONENTS GuiPrivate)
+    target_link_libraries(stylus-probe PRIVATE Qt6::GuiPrivate)
+endif()
 set_target_properties(stylus-probe PROPERTIES WIN32_EXECUTABLE TRUE)

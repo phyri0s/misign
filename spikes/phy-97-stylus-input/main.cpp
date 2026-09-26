@@ -1,10 +1,12 @@
 // PHY-97 spike: logs what Qt 6.11 delivers for stylus, touchpad and mouse input.
 //
-//   stylus-probe [--no-compress] [--out <dir>] [--quit-after <ms>] [Qt options]
+//   stylus-probe [--no-compress] [--wintab] [--out <dir>] [--quit-after <ms>]
 //
 // --no-compress turns off Qt's compression of tablet and high-frequency events,
-// to see the full point stream. On Windows, `-platform windows:nowmpointer`
-// switches from Windows Ink (WM_POINTER) to Wintab.
+// to see the full point stream. --wintab (Windows) switches from Windows Ink
+// (WM_POINTER, Qt's default) to Wintab. Qt 6.11 has no platform option for it
+// any more ("windows:nowmpointer" is reported as unknown): only the private
+// QWindowsApplication::setWinTabEnabled does it.
 
 #include "recorder.h"
 
@@ -14,6 +16,10 @@
 #include <QQmlApplicationEngine>
 #include <QQuickWindow>
 #include <QTimer>
+
+#ifdef Q_OS_WIN
+#include <QtGui/private/qguiapplication_p.h>
+#endif
 
 int main(int argc, char *argv[])
 {
@@ -32,6 +38,7 @@ int main(int argc, char *argv[])
     QCommandLineParser parser;
     parser.addHelpOption();
     parser.addOption({QStringLiteral("no-compress"), QStringLiteral("Deliver every input event")});
+    parser.addOption({QStringLiteral("wintab"), QStringLiteral("Use Wintab (Windows)")});
     parser.addOption({QStringLiteral("out"), QStringLiteral("Directory for the logs"),
                       QStringLiteral("dir"), QDir::currentPath()});
     parser.addOption({QStringLiteral("quit-after"), QStringLiteral("Save and quit after <ms>"),
@@ -39,9 +46,15 @@ int main(int argc, char *argv[])
     parser.process(app);
 
     QString mode = compress ? QStringLiteral("compressed") : QStringLiteral("uncompressed");
-    const QString platformArgument = qEnvironmentVariable("QT_QPA_PLATFORM");
-    if (platformArgument.contains(QLatin1Char(':'))) {
-        mode += QLatin1Char('-') + platformArgument.section(QLatin1Char(':'), 1);
+    if (parser.isSet(QStringLiteral("wintab"))) {
+        bool enabled = false;
+#ifdef Q_OS_WIN
+        using QNativeInterface::Private::QWindowsApplication;
+        if (auto *windows = app.nativeInterface<QWindowsApplication>()) {
+            enabled = windows->setWinTabEnabled(true) && windows->isWinTabEnabled();
+        }
+#endif
+        mode += enabled ? QStringLiteral("-wintab") : QStringLiteral("-wintab-unavailable");
     }
     Recorder::configure(parser.value(QStringLiteral("out")), mode);
 
