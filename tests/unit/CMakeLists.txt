@@ -4,6 +4,12 @@ misign_add_test(tst_point
     LIBRARIES misign_domain
 )
 
+misign_add_test(tst_signature
+    LABEL unit
+    SOURCES tst_signature.cpp
+    LIBRARIES misign_domain
+)
+
 misign_add_test(tst_page_geometry
     LABEL unit
     SOURCES tst_page_geometry.cpp

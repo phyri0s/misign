@@ -16,11 +16,12 @@ private slots:
 
 void TestPoint::keepsCoordinatesAndTimestamp()
 {
-    const Point point(12.5, -3.0, 0.5, 42ms);
+    // Sub-millisecond: samples arrive about every 5 ms.
+    const Point point(12.5, -3.0, 0.5, 42'250us);
 
     QCOMPARE(point.x(), 12.5);
     QCOMPARE(point.y(), -3.0);
-    QCOMPARE(point.timestamp(), 42ms);
+    QCOMPARE(point.timestamp(), 42'250us);
 }
 
 void TestPoint::keepsPressureInRange_data()
@@ -40,7 +41,7 @@ void TestPoint::keepsPressureInRange()
     QFETCH(double, pressure);
     QFETCH(double, expected);
 
-    QCOMPARE(Point(0.0, 0.0, pressure, 0ms).pressure(), expected);
+    QCOMPARE(Point(0.0, 0.0, pressure, 0us).pressure(), expected);
 }
 
 QTEST_APPLESS_MAIN(TestPoint)
