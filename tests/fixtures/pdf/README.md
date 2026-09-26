@@ -15,10 +15,16 @@ Small PDFs covering the cases where signature placement or saving can go wrong. 
 | `a4-rotate-270.pdf` | A4 portrait `MediaBox` with `/Rotate 270`: displayed as landscape |
 | `a4-cropbox-offset.pdf` | `MediaBox [0 0 700 950]`, A4 `CropBox` offset to `(60, 90)` |
 | `mixed.pdf` | 5 pages: A4 portrait; Letter landscape; A4 `/Rotate 90`; offset `CropBox` with `/Rotate 180`; `MediaBox` with a negative origin, offset `CropBox` and `/Rotate 270` |
+| `a4-rotate-unusual.pdf` | 4 A4 portrait pages with `/Rotate` -90, 450, 135 and 45, which PDFium reads as 270, 90, 90 and 0 (truncated to a multiple of 90, then into [0, 360)) |
+| `inherited-attributes.pdf` | 4 pages whose attributes come from the page tree. The root node sets an A4 `MediaBox` and `/Rotate 90`. Page 1 inherits both. Pages 2 and 3 sit under an intermediate node that sets the `a4-cropbox-offset.pdf` boxes and `/Rotate 180`: page 2 inherits all three, page 3 overrides the rotation with its own `/Rotate 0`. Page 4 has its own Letter landscape `MediaBox` and inherits `/Rotate 90` from the root |
+| `degenerate-boxes.pdf` | 4 pages with boxes PDFium corrects: an empty `MediaBox` (shown as US Letter, which clips the `CropBox`); an empty `CropBox` (the `MediaBox` is shown); a `CropBox` outside the `MediaBox` (nothing is shown, 0 × 0); a `CropBox` partly outside the `MediaBox` (clipped) |
+| `a4-userunit-2.pdf` | `/UserUnit 2` (PDF 1.6): a `MediaBox` of 297.638 × 420.945 units, A4 in physical size |
 | `signed-a4.pdf` | A4 portrait carrying a visible approval signature (PAdES, RSA 2048, SHA-256), added as an incremental update |
 | `signed-a4.cert.pem` | Self-signed certificate of that signature, used as the trust root to validate it |
+| `certified-p1-a4.pdf`, `certified-p2-a4.pdf`, `certified-p3-a4.pdf` | A4 portrait certified with a visible certification signature (`/Perms /DocMDP`), with DocMDP permission level `P` = 1 (no changes), 2 (form filling and signing only) and 3 (also annotations). Only `P` = 3 allows adding the drawn signature as an annotation |
+| `certified-p<P>-a4.cert.pem` | Self-signed certificate of each certification signature |
 | `pdfa-2b-a4.pdf` | A4 portrait converted to PDF/A-2b (embedded font, sRGB output intent), for later veraPDF checks |
-| `manifest.json` | Geometry of every page: boxes, `/Rotate`, displayed size, and the user-space coordinates of each displayed corner |
+| `manifest.json` | Geometry of every page: boxes and `/Rotate` as written, visible area, displayed size, and the user-space coordinates of each displayed corner |
 
 ## Reading a page
 
@@ -27,11 +33,28 @@ Each page is drawn so that it reads upright once `/Rotate` is applied, as a view
 - a blue frame along the `CropBox`, and an arrow pointing to the displayed top;
 - the fixture name, page number, `MediaBox`, `CropBox` and `/Rotate`;
 - at each displayed corner, the user-space coordinates of that corner, e.g. `top_left: user (0, 0)` on `a4-rotate-90.pdf`;
-- on pages with an offset `CropBox`, red text drawn outside it, which must never be visible.
+- on pages whose visible area is smaller than the `MediaBox`, red text drawn in a `MediaBox` corner outside it, which must never be visible. The script fails if no corner is free.
+
+Labels mark the values that differ from what the file says: `(inherited)` for an attribute taken from the page tree, `(read as 90)` for an unusual `/Rotate`, `(empty: ...)` for a degenerate box. A page with nothing visible only carries the red text.
 
 These labels and `manifest.json` give the expected results for screen → PDF coordinate conversion: a point placed at a displayed corner must land at the listed user-space coordinates.
 
-In `manifest.json`, `crop_box` is the effective `CropBox`: when a page has none, the PDF specification makes it default to the `MediaBox`, so `crop_box` then holds the `MediaBox` values. It is always the visible area of the page.
+`manifest.json` lists, for every page:
+
+- `media_box`, `crop_box` and `rotate`: the values as written in the file, once page tree inheritance is resolved, which is what the PoDoFo adapter must read. `crop_box` is `null` when the page has none;
+- `user_unit`: `/UserUnit`, 1 when absent;
+- `inherited`: the attributes taken from the page tree, e.g. `["MediaBox", "Rotate"]`;
+- `visible_box`: the area a viewer shows, as PDFium computes it (the `CropBox` clipped to the `MediaBox`, with its fallbacks for empty boxes), or `null` when nothing is visible;
+- `displayed_size` and `displayed_corners_in_user_space`: the page as displayed, turned by `/Rotate` as PDFium reads it, in user-space units. Pages with nothing visible have a 0 × 0 size and no corners.
+
+The `tst_page_geometry` unit test builds every page from `media_box`, `crop_box` and `rotate`, and checks the other values.
+
+### Observed with Qt PDF 6.11
+
+Checked when the files were added, with `QPdfDocument` (not part of the test suite):
+
+- `QPdfDocument::pagePointSize` matches `displayed_size` on every page of `a4-rotate-unusual.pdf`, `inherited-attributes.pdf` and `degenerate-boxes.pdf`, and every rendered page reads upright: Qt PDF follows page tree inheritance and the PDFium reading of `/Rotate`.
+- Qt PDF ignores `UserUnit`: it gives `a4-userunit-2.pdf` a size of 297.638 × 420.945 points, half of A4, while Ghostscript renders it A4. Placement in user space is not affected; only the physical size, and so stroke widths expressed in points, would be. What Misign does on such pages is decided in PHY-88.
 
 ## Regenerating
 
@@ -43,6 +66,6 @@ python3 -m venv ~/.venvs/fixtures
 ~/.venvs/fixtures/bin/python tests/fixtures/pdf/generate.py
 ```
 
-The geometry fixtures only need the Python standard library and their bytes are deterministic. `signed-a4.pdf` (pyHanko, with a new throwaway key and a new signing time) and `pdfa-2b-a4.pdf` (Ghostscript, with new dates and IDs) change on every run: pass `--skip-signed` or `--skip-pdfa` to leave them untouched. The private key of the test certificate is never written to the repository.
+The geometry fixtures only need the Python standard library and their bytes are deterministic. `signed-a4.pdf` and the `certified-p*-a4.pdf` files (pyHanko, with a new throwaway key and a new signing time) and `pdfa-2b-a4.pdf` (Ghostscript, with new dates and IDs) change on every run: pass `--skip-signed` or `--skip-pdfa` to leave them untouched. The private keys of the test certificates are never written to the repository.
 
 `generate.py --check` writes nothing: it regenerates the deterministic files (geometry fixtures and `manifest.json`) in a temporary directory and fails if they differ from the committed ones. CTest runs it as the `fixtures_up_to_date` test, so changing the script without regenerating the corpus fails the build.
