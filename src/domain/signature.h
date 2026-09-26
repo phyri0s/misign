@@ -23,14 +23,20 @@ public:
     // signature. Stroke widths are not included.
     [[nodiscard]] std::optional<ScreenRect> boundingBox() const noexcept;
 
-    // The matrix mapping the signature into `box`, a rectangle in PDF
-    // coordinates (y up): scaled uniformly to the largest size that fits,
-    // centred, and turned the right way up, since the drawing surface has y
-    // down. A signature with no height or no width (a straight line) is scaled
-    // along its other dimension only, and a single dot is only moved to the
-    // centre. None for an empty signature.
+    // The matrix mapping the signature into `box`: scaled uniformly to the
+    // largest size that fits, centred, and turned the right way up, since the
+    // drawing surface has y down. A signature with no height or no width (a
+    // straight line) is scaled along its other dimension only, and a single dot
+    // is only moved to the centre. None for an empty signature or an empty box.
+    //
+    // `box` is in displayed coordinates (points, origin at the bottom left of
+    // the page as displayed, see PageGeometry), not in user space: on a rotated
+    // page the signature must be upright as displayed. The content stream
+    // applies PageGeometry::displayedToUser(), then this matrix (PHY-83).
     //
     // Stroke widths are not part of the fit: leave room for them in `box`.
+    // Widths set inside this transformation are in drawing units and scale
+    // with it.
     [[nodiscard]] std::optional<AffineMatrix> fitInto(const PdfRect &box) const noexcept;
 
     friend bool operator==(const Signature &, const Signature &) = default;

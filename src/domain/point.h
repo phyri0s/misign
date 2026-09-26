@@ -7,7 +7,8 @@ namespace misign::domain {
 // A pen sample on the drawing surface: logical pixels, origin at the top left,
 // y down, as the drawing pad receives it.
 //
-// The timestamp is taken on reception with a steady clock, in microseconds:
+// The timestamp is taken on reception with a steady clock, in microseconds
+// since an arbitrary origin: only differences within a session are meaningful.
 // samples arrive about every 5 ms, and the event timestamps Qt gets from
 // Windows move in 15 ms steps (PHY-97), both too coarse for a speed.
 class Point {

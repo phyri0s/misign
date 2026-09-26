@@ -33,7 +33,7 @@ std::optional<ScreenRect> Signature::boundingBox() const noexcept
 std::optional<AffineMatrix> Signature::fitInto(const PdfRect &box) const noexcept
 {
     const std::optional<ScreenRect> bounds = boundingBox();
-    if (!bounds) {
+    if (!bounds || box.isEmpty()) {
         return std::nullopt;
     }
     const double width = bounds->right - bounds->left;

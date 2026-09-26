@@ -9,9 +9,12 @@
 
 using misign::domain::AffineMatrix;
 using misign::domain::InputMode;
+using misign::domain::PageGeometry;
 using misign::domain::PdfPoint;
 using misign::domain::PdfRect;
 using misign::domain::Point;
+using misign::domain::Rotation;
+using misign::domain::ScreenPoint;
 using misign::domain::ScreenRect;
 using misign::domain::Signature;
 using misign::domain::Stroke;
@@ -67,11 +70,13 @@ private slots:
     void ignoresEmptyStrokes();
     void boundingBoxCoversEveryStroke();
     void emptySignatureHasNoBoundingBoxAndNoFit();
+    void emptyBoxHasNoFit();
     void fitsAWideSignature();
     void fitsATallSignature();
     void keepsTheAspectRatioAndTurnsYUp();
     void fitsAStraightLineAlongItsLength();
     void movesASingleDotToTheCentre();
+    void staysUprightOnARotatedPage();
 };
 
 void TestSignature::strokeKeepsItsPointsInOrder()
@@ -107,6 +112,14 @@ void TestSignature::emptySignatureHasNoBoundingBoxAndNoFit()
 
     QVERIFY(!sig.boundingBox().has_value());
     QVERIFY(!sig.fitInto(PdfRect{0.0, 0.0, 100.0, 50.0}).has_value());
+}
+
+// A box with no area would squash the signature to a point: no fit.
+void TestSignature::emptyBoxHasNoFit()
+{
+    const Signature sig = signature({stroke({{0.0, 0.0}, {20.0, 10.0}})});
+
+    QVERIFY(!sig.fitInto(PdfRect{0.0, 0.0, 100.0, 0.0}).has_value());
 }
 
 // 200 × 50 drawn, into a 200 × 200 box at (100, 100): full width, centred
@@ -163,6 +176,34 @@ void TestSignature::movesASingleDotToTheCentre()
 
     QVERIFY(near(m.map({12.0, 34.0}), {50.0, 20.0}));
     QCOMPARE(m.a, 1.0); // Not scaled: nothing to scale it by.
+}
+
+// A4 with /Rotate 90, displayed as landscape. The user selects a wide 200 × 50
+// box on screen and draws a wide signature: composed with displayedToUser(),
+// as the content stream will be, the drawing's corners land on the user-space
+// points toUser() gives for the box's corners, so it is upright as displayed.
+// PoDoFo's convenience API got this case wrong (PHY-83).
+void TestSignature::staysUprightOnARotatedPage()
+{
+    const PageGeometry page({0.0, 0.0, 595.276, 841.89}, std::nullopt, Rotation::Clockwise90);
+    constexpr double scale = 2.0; // Pixels per point.
+    const ScreenRect selection{200.0, 300.0, 600.0, 400.0};
+    // The same box in displayed coordinates (y up from the displayed bottom).
+    const double displayedTop = page.displayedHeight() - (selection.top / scale);
+    const PdfRect box{selection.left / scale,
+                      displayedTop - ((selection.bottom - selection.top) / scale),
+                      selection.right / scale, displayedTop};
+    const Signature sig = signature({stroke({{0.0, 0.0}, {200.0, 50.0}})});
+
+    const AffineMatrix fit = fitted(sig, box);
+    const auto toUserSpace = [&](PdfPoint drawn) {
+        return page.displayedToUser().map(fit.map(drawn));
+    };
+
+    QVERIFY(near(toUserSpace({0.0, 0.0}),
+                 page.toUser(ScreenPoint{selection.left, selection.top}, scale)));
+    QVERIFY(near(toUserSpace({200.0, 50.0}),
+                 page.toUser(ScreenPoint{selection.right, selection.bottom}, scale)));
 }
 
 QTEST_APPLESS_MAIN(TestSignature)
