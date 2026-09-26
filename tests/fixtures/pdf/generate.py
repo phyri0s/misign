@@ -276,10 +276,18 @@ def page_content(name: str, index: int, count: int, page: Geometry) -> bytes:
     media = normalized(page.media)
     if is_empty(media):
         media = DEFAULT_MEDIA
-    # Drawn in the MediaBox, outside the visible area: must never be visible.
-    warning = (media[0] + 5, media[1] + 5, media[0] + 260, media[1] + 15)
-    if visible != media and (visible is None or not overlaps(warning, visible)):
-        out.append("0.8 0 0 rg\n" + text(warning[0], warning[1], 10, "OUTSIDE CROPBOX: MUST NOT BE VISIBLE"))
+    # Drawn in a MediaBox corner outside the visible area: must never be visible.
+    if visible != media:
+        x0, y0, x1, y1 = media
+        spots = [(x0 + 5, y0 + 5), (x0 + 5, y1 - 15), (x1 - 260, y0 + 5), (x1 - 260, y1 - 15)]
+        spot = next((
+            (x, y) for x, y in spots
+            if visible is None or not overlaps((x, y, x + 255, y + 10), visible)
+        ), None)
+        if spot is None:
+            raise ValueError(f"{name} page {index + 1}: no MediaBox corner outside the visible area "
+                             "for the OUTSIDE CROPBOX text")
+        out.append("0.8 0 0 rg\n" + text(*spot, 10, "OUTSIDE CROPBOX: MUST NOT BE VISIBLE"))
     if visible is None:
         return "".join(out).encode("ascii")
 
@@ -441,6 +449,10 @@ def write_signed(source: Path, target: Path, cert_target: Path, certify: int | N
     from pyhanko.sign.validation import read_certification_data, validate_pdf_signature
     from pyhanko_certvalidator import ValidationContext
 
+    certification = {}
+    if certify is not None:
+        certification = dict(certify=True, docmdp_permissions=fields.MDPPerm(certify))
+
     with tempfile.TemporaryDirectory() as tmp:
         key_path, cert_path = make_test_certificate(Path(tmp))
         signer = signers.SimpleSigner.load(str(key_path), str(cert_path))
@@ -449,8 +461,7 @@ def write_signed(source: Path, target: Path, cert_target: Path, certify: int | N
             fields.append_signature_field(writer, fields.SigFieldSpec("Signature1", box=(60, 60, 260, 120)))
             metadata = signers.PdfSignatureMetadata(
                 field_name="Signature1", reason="Misign test fixture", subfilter=fields.SigSeedSubFilter.PADES,
-                certify=certify is not None,
-                docmdp_permissions=fields.MDPPerm(certify or fields.MDPPerm.FILL_FORMS),
+                **certification,
             )
             signers.sign_pdf(writer, metadata, signer=signer, output=outf)
         shutil.copyfile(cert_path, cert_target)
@@ -459,10 +470,10 @@ def write_signed(source: Path, target: Path, cert_target: Path, certify: int | N
     with target.open("rb") as inf:
         reader = PdfFileReader(inf)
         status = validate_pdf_signature(reader.embedded_signatures[0], ValidationContext(trust_roots=[root]))
-        certification = read_certification_data(reader)
+        docmdp = read_certification_data(reader)
     if not (status.intact and status.valid and status.trusted):
         sys.exit(f"{target.name}: the signature does not validate: {status.summary()}")
-    level = certification.permission.value if certification else None
+    level = docmdp.permission.value if docmdp else None
     if level != certify:
         sys.exit(f"{target.name}: DocMDP level {level}, expected {certify}")
 

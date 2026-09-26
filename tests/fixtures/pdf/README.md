@@ -33,7 +33,7 @@ Each page is drawn so that it reads upright once `/Rotate` is applied, as a view
 - a blue frame along the `CropBox`, and an arrow pointing to the displayed top;
 - the fixture name, page number, `MediaBox`, `CropBox` and `/Rotate`;
 - at each displayed corner, the user-space coordinates of that corner, e.g. `top_left: user (0, 0)` on `a4-rotate-90.pdf`;
-- on pages whose visible area is smaller than the `MediaBox`, red text drawn outside it, which must never be visible.
+- on pages whose visible area is smaller than the `MediaBox`, red text drawn in a `MediaBox` corner outside it, which must never be visible. The script fails if no corner is free.
 
 Labels mark the values that differ from what the file says: `(inherited)` for an attribute taken from the page tree, `(read as 90)` for an unusual `/Rotate`, `(empty: ...)` for a degenerate box. A page with nothing visible only carries the red text.
 
@@ -54,7 +54,7 @@ The `tst_page_geometry` unit test builds every page from `media_box`, `crop_box`
 Checked when the files were added, with `QPdfDocument` (not part of the test suite):
 
 - `QPdfDocument::pagePointSize` matches `displayed_size` on every page of `a4-rotate-unusual.pdf`, `inherited-attributes.pdf` and `degenerate-boxes.pdf`, and every rendered page reads upright: Qt PDF follows page tree inheritance and the PDFium reading of `/Rotate`.
-- Qt PDF ignores `UserUnit`: it gives `a4-userunit-2.pdf` a size of 297.638 × 420.945 points, half of A4, while Ghostscript renders it A4. Placement in user space is not affected; only the physical size, and so stroke widths expressed in points, would be.
+- Qt PDF ignores `UserUnit`: it gives `a4-userunit-2.pdf` a size of 297.638 × 420.945 points, half of A4, while Ghostscript renders it A4. Placement in user space is not affected; only the physical size, and so stroke widths expressed in points, would be. What Misign does on such pages is decided in PHY-88.
 
 ## Regenerating
 
