@@ -31,7 +31,8 @@ struct PdfRect {
     friend bool operator==(const PdfRect &, const PdfRect &) = default;
 };
 
-// A point on the rendered page image: pixels, origin at the top left, y down.
+// A point on a screen surface (the rendered page image, the drawing pad):
+// pixels, origin at the top left, y down.
 struct ScreenPoint {
     double x;
     double y;
@@ -39,7 +40,7 @@ struct ScreenPoint {
     friend bool operator==(const ScreenPoint &, const ScreenPoint &) = default;
 };
 
-// A rectangle on the rendered page image, normalized: left <= right and top <= bottom.
+// A rectangle on a screen surface, normalized: left <= right and top <= bottom.
 struct ScreenRect {
     double left;
     double top;
