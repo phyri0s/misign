@@ -55,6 +55,35 @@ PageGeometry a4(Rotation rotation)
     return {{0.0, 0.0, kA4Width, kA4Height}, std::nullopt, rotation};
 }
 
+// Every page of tests/fixtures/pdf/manifest.json, named "<file> page <n>".
+// Empty when the manifest cannot be read.
+QList<std::pair<QString, QJsonObject>> corpusPages()
+{
+    QFile file(QStringLiteral(MISIGN_FIXTURES_DIR "/manifest.json"));
+    if (!file.open(QIODevice::ReadOnly)) {
+        return {};
+    }
+    const QJsonObject manifest = QJsonDocument::fromJson(file.readAll()).object();
+    QList<std::pair<QString, QJsonObject>> result;
+    for (auto it = manifest.begin(); it != manifest.end(); ++it) {
+        const QJsonArray pages = it.value().toArray();
+        for (qsizetype index = 0; index < pages.size(); ++index) {
+            result.emplace_back(QStringLiteral("%1 page %2").arg(it.key()).arg(index + 1),
+                                pages.at(index).toObject());
+        }
+    }
+    return result;
+}
+
+// A manifest page, built from its boxes and /Rotate as written in the file
+// (after inheritance), as the PDF adapter will read them.
+PageGeometry geometryOf(const QJsonObject &page)
+{
+    return {rectFromJson(page[QStringLiteral("media_box")].toArray()),
+            optionalRectFromJson(page[QStringLiteral("crop_box")]),
+            rotationFromDegrees(page[QStringLiteral("rotate")].toInt())};
+}
+
 } // namespace
 
 class TestPageGeometry : public QObject {
@@ -66,6 +95,8 @@ private slots:
     void visibleBoxIsTheCropBoxClippedToTheMediaBox();
     void handlesDegenerateBoxesLikePdfium();
     void swapsDisplayedSizeWhenSideways();
+    void matchesVisibleAreaOfTheCorpus_data();
+    void matchesVisibleAreaOfTheCorpus();
     void mapsDisplayedCornersOfTheCorpus_data();
     void mapsDisplayedCornersOfTheCorpus();
     void convertsASelectedRectangle();
@@ -145,28 +176,50 @@ void TestPageGeometry::swapsDisplayedSizeWhenSideways()
     QCOMPARE(a4(Rotation::Clockwise270).displayedHeight(), kA4Width);
 }
 
-// Every page of tests/fixtures/pdf/manifest.json, built from its boxes and
-// /Rotate as written in the file (after inheritance): the visible area matches,
-// and the corners of the page as displayed, selected on screen at several zoom
-// levels, land on the user-space coordinates that the fixtures print on each page.
+// Every page of the corpus manifest: the visible area and the displayed size
+// computed from the raw boxes and /Rotate are the ones the manifest expects,
+// including degenerate boxes and unusual /Rotate values.
+void TestPageGeometry::matchesVisibleAreaOfTheCorpus_data()
+{
+    QTest::addColumn<QJsonObject>("page");
+
+    const auto pages = corpusPages();
+    QVERIFY(!pages.isEmpty());
+    for (const auto &[name, page] : pages) {
+        QTest::newRow(qPrintable(name)) << page;
+    }
+}
+
+void TestPageGeometry::matchesVisibleAreaOfTheCorpus()
+{
+    QFETCH(QJsonObject, page);
+
+    const PageGeometry geometry = geometryOf(page);
+    const std::optional<PdfRect> visible =
+        optionalRectFromJson(page[QStringLiteral("visible_box")]);
+    QCOMPARE(geometry.hasVisibleArea(), visible.has_value());
+    if (visible) {
+        QVERIFY(near(geometry.visibleBox(), *visible));
+    }
+    const QJsonArray size = page[QStringLiteral("displayed_size")].toArray();
+    QVERIFY(near(geometry.displayedWidth(), size.at(0).toDouble()));
+    QVERIFY(near(geometry.displayedHeight(), size.at(1).toDouble()));
+}
+
+// Every page of the corpus manifest: the corners of the page as displayed,
+// selected on screen at several zoom levels, land on the user-space coordinates
+// that the fixtures print on each page.
 void TestPageGeometry::mapsDisplayedCornersOfTheCorpus_data()
 {
     QTest::addColumn<QJsonObject>("page");
     QTest::addColumn<double>("scale");
 
-    QFile file(QStringLiteral(MISIGN_FIXTURES_DIR "/manifest.json"));
-    QVERIFY(file.open(QIODevice::ReadOnly));
-    const QJsonObject manifest = QJsonDocument::fromJson(file.readAll()).object();
-    QVERIFY(!manifest.isEmpty());
-
-    for (auto it = manifest.begin(); it != manifest.end(); ++it) {
-        const QJsonArray pages = it.value().toArray();
-        for (qsizetype index = 0; index < pages.size(); ++index) {
-            for (const double scale : {0.5, 1.0, 2.5}) {
-                const QString name =
-                    QStringLiteral("%1 page %2 x%3").arg(it.key()).arg(index + 1).arg(scale);
-                QTest::newRow(qPrintable(name)) << pages.at(index).toObject() << scale;
-            }
+    const auto pages = corpusPages();
+    QVERIFY(!pages.isEmpty());
+    for (const auto &[name, page] : pages) {
+        for (const double scale : {0.5, 1.0, 2.5}) {
+            QTest::newRow(qPrintable(QStringLiteral("%1 x%2").arg(name).arg(scale)))
+                << page << scale;
         }
     }
 }
@@ -176,20 +229,10 @@ void TestPageGeometry::mapsDisplayedCornersOfTheCorpus()
     QFETCH(QJsonObject, page);
     QFETCH(double, scale);
 
-    const PageGeometry geometry(rectFromJson(page[QStringLiteral("media_box")].toArray()),
-                                optionalRectFromJson(page[QStringLiteral("crop_box")]),
-                                rotationFromDegrees(page[QStringLiteral("rotate")].toInt()));
-    const std::optional<PdfRect> visible =
-        optionalRectFromJson(page[QStringLiteral("visible_box")]);
-    QCOMPARE(geometry.hasVisibleArea(), visible.has_value());
-    if (!visible) {
-        return; // Nothing displayed: no corner to select.
+    const PageGeometry geometry = geometryOf(page);
+    if (!geometry.hasVisibleArea()) {
+        return; // Nothing displayed: no corner to select (see matchesVisibleAreaOfTheCorpus).
     }
-    QVERIFY(near(geometry.visibleBox(), *visible));
-    const QJsonArray size = page[QStringLiteral("displayed_size")].toArray();
-    QVERIFY(near(geometry.displayedWidth(), size.at(0).toDouble()));
-    QVERIFY(near(geometry.displayedHeight(), size.at(1).toDouble()));
-
     const double right = geometry.displayedWidth() * scale;
     const double bottom = geometry.displayedHeight() * scale;
     const QJsonObject corners = page[QStringLiteral("displayed_corners_in_user_space")].toObject();
