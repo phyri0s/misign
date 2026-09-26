@@ -79,10 +79,11 @@ Recorder::Recorder(QObject *parent) : QObject(parent)
     m_clock.start();
 }
 
-void Recorder::configure(const QString &outputDir, const QString &mode)
+void Recorder::configure(const QString &outputDir, const QString &mode, bool acceptTablet)
 {
     s_outputDir = outputDir;
     s_mode = mode;
+    s_acceptTablet = acceptTablet;
 }
 
 bool Recorder::eventFilter(QObject *watched, QEvent *event)
@@ -124,6 +125,7 @@ bool Recorder::eventFilter(QObject *watched, QEvent *event)
                                           static_cast<int>(device->capabilities()))
                                    : QString(),
             .position = point.scenePosition(),
+            .globalPosition = point.globalPosition(),
             .pressure = point.pressure(),
             .xTilt = tablet ? tablet->xTilt() : 0.0,
             .yTilt = tablet ? tablet->yTilt() : 0.0,
@@ -133,8 +135,15 @@ bool Recorder::eventFilter(QObject *watched, QEvent *event)
                 pointerMouse ? m_mouseDrawing.value(deviceName) : isContact(pointerEvent, point),
         });
     }
-    // Never consume: Qt Quick must still deliver the event, so we also see
-    // which mouse events it synthesizes and what the PointHandlers get.
+    // Qt synthesizes a mouse event from every tablet event nobody accepted
+    // (QGuiApplicationPrivate::processTabletEvent). By default the probe does
+    // not consume, so Qt Quick still delivers the event and we see those mouse
+    // twins and what the handlers get; --accept-tablet behaves like Misign's
+    // capture code will.
+    if (tablet && s_acceptTablet) {
+        event->accept();
+        return true;
+    }
     return false;
 }
 
@@ -161,6 +170,7 @@ void Recorder::recordHandler(const QString &handler, double x, double y, double 
         .pointerType = QString(),
         .capabilities = QString(),
         .position = {x, y},
+        .globalPosition = {},
         .pressure = pressure,
         .xTilt = 0.0,
         .yTilt = 0.0,
@@ -172,6 +182,34 @@ void Recorder::recordHandler(const QString &handler, double x, double y, double 
 
 void Recorder::append(Sample sample)
 {
+    if (sample.source != QLatin1String("marker")) {
+        // Split by event class too: unless tablet events are accepted, Qt sends
+        // a mouse event synthesized from each one, with the stylus device.
+        const QString key = sample.source + QStringLiteral(" | ") +
+                            (sample.device.isEmpty() ? QStringLiteral("-") : sample.device) +
+                            QStringLiteral(" | ") + sample.deviceType + QStringLiteral("/") +
+                            sample.pointerType + QStringLiteral(" | ") + eventClass(sample.event);
+        Group &g = m_groups[key];
+        ++g.samples;
+        g.events.insert(sample.event);
+        g.capabilities = sample.capabilities;
+        g.tilt = g.tilt || sample.xTilt != 0.0 || sample.yTilt != 0.0;
+        if (sample.contact) {
+            ++g.contact;
+            g.minPressure = std::min(g.minPressure, sample.pressure);
+            g.maxPressure = std::max(g.maxPressure, sample.pressure);
+            g.pressures.insert(sample.pressure);
+            if (g.lastContactMs >= 0.0) {
+                const double gap = sample.elapsedMs - g.lastContactMs;
+                ++g.intervals;
+                g.drawingMs += gap;
+                g.longestGap = std::max(g.longestGap, gap);
+            }
+            g.lastContactMs = sample.elapsedMs;
+        } else {
+            g.lastContactMs = -1.0;
+        }
+    }
     m_samples.append(std::move(sample));
     emit changed();
 }
@@ -188,71 +226,20 @@ void Recorder::mark(const QString &label)
 void Recorder::clear()
 {
     m_samples.clear();
+    m_groups.clear();
     m_mouseDrawing.clear();
     emit changed();
 }
 
 QString Recorder::summary() const
 {
-    struct Group {
-        int samples = 0;
-        int contact = 0;
-        double minPressure = 1.0;
-        double maxPressure = 0.0;
-        QSet<double> pressures;
-        bool tilt = false;
-        QSet<QString> events;
-        QList<double> intervals;
-        double lastContactMs = -1.0;
-        QString capabilities;
-    };
-    QMap<QString, Group> groups;
-    for (const Sample &s : m_samples) {
-        if (s.source == QLatin1String("marker")) {
-            continue;
-        }
-        // Split by event class too: Qt sends mouse events synthesized from the
-        // stylus with the stylus device, microseconds after the tablet event.
-        const QString key = s.source + QStringLiteral(" | ") +
-                            (s.device.isEmpty() ? QStringLiteral("-") : s.device) +
-                            QStringLiteral(" | ") + s.deviceType + QStringLiteral("/") +
-                            s.pointerType + QStringLiteral(" | ") + eventClass(s.event);
-        Group &g = groups[key];
-        ++g.samples;
-        g.events.insert(s.event);
-        g.capabilities = s.capabilities;
-        if (s.xTilt != 0.0 || s.yTilt != 0.0) {
-            g.tilt = true;
-        }
-        if (!s.contact) {
-            g.lastContactMs = -1.0;
-            continue;
-        }
-        ++g.contact;
-        g.minPressure = std::min(g.minPressure, s.pressure);
-        g.maxPressure = std::max(g.maxPressure, s.pressure);
-        g.pressures.insert(s.pressure);
-        if (g.lastContactMs >= 0.0) {
-            g.intervals.append(s.elapsedMs - g.lastContactMs);
-        }
-        g.lastContactMs = s.elapsedMs;
-    }
-
     QString text;
     QTextStream out(&text);
     out << "Platform: " << QGuiApplication::platformName() << ", mode: " << s_mode << "\n";
-    for (auto it = groups.cbegin(); it != groups.cend(); ++it) {
+    for (auto it = m_groups.cbegin(); it != m_groups.cend(); ++it) {
         const Group &g = it.value();
         QStringList events(g.events.cbegin(), g.events.cend());
         events.sort();
-        // Events arrive in bursts when the GUI thread is busy, so a median gap
-        // means little: report the mean rate over drawing time and the longest gap.
-        double drawingMs = 0.0;
-        double longestGap = 0.0;
-        for (const double gap : g.intervals) {
-            drawingMs += gap;
-            longestGap = std::max(longestGap, gap);
-        }
         out << "\n" << it.key() << "\n";
         out << "  samples " << g.samples << ", in contact " << g.contact << "\n";
         out << "  events: " << events.join(QStringLiteral(", ")) << "\n";
@@ -263,9 +250,11 @@ QString Recorder::summary() const
             out << "  pressure " << g.minPressure << " .. " << g.maxPressure << " ("
                 << g.pressures.size() << " distinct values)" << (g.tilt ? ", tilt reported" : "")
                 << "\n";
-            if (drawingMs > 0.0) {
-                out << "  ~" << qRound(static_cast<double>(g.intervals.size()) * 1000.0 / drawingMs)
-                    << " events/s while drawing, longest gap " << qRound(longestGap) << " ms\n";
+            // Events arrive in bursts when the GUI thread is busy, so a median
+            // gap means little: the mean rate over drawing time and the longest gap.
+            if (g.drawingMs > 0.0) {
+                out << "  ~" << qRound(static_cast<double>(g.intervals) * 1000.0 / g.drawingMs)
+                    << " events/s while drawing, longest gap " << qRound(g.longestGap) << " ms\n";
             }
         }
     }
@@ -284,13 +273,16 @@ QString Recorder::save()
     }
     QTextStream out(&csv);
     out << "elapsed_ms,event_time,source,event,device,device_type,pointer_type,capabilities,"
-           "x,y,pressure,x_tilt,y_tilt,rotation,buttons,contact\n";
+           "x,y,global_x,global_y,pressure,x_tilt,y_tilt,rotation,buttons,contact\n";
     for (const Sample &s : m_samples) {
         out << QString::number(s.elapsedMs, 'f', 3) << ',' << s.eventTime << ',' << s.source << ','
             << s.event << ",\"" << s.device << "\"," << s.deviceType << ',' << s.pointerType
-            << ",\"" << s.capabilities << "\"," << s.position.x() << ',' << s.position.y() << ','
-            << s.pressure << ',' << s.xTilt << ',' << s.yTilt << ',' << s.rotation << ','
-            << s.buttons << ',' << (s.contact ? 1 : 0) << '\n';
+            << ",\"" << s.capabilities << "\"," << QString::number(s.position.x(), 'f', 3) << ','
+            << QString::number(s.position.y(), 'f', 3) << ','
+            << QString::number(s.globalPosition.x(), 'f', 3) << ','
+            << QString::number(s.globalPosition.y(), 'f', 3) << ',' << s.pressure << ',' << s.xTilt
+            << ',' << s.yTilt << ',' << s.rotation << ',' << s.buttons << ',' << (s.contact ? 1 : 0)
+            << '\n';
     }
     QFile summaryFile(base + QStringLiteral(".txt"));
     if (summaryFile.open(QIODevice::WriteOnly | QIODevice::Text)) {

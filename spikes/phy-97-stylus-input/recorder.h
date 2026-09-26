@@ -3,8 +3,10 @@
 #include <QElapsedTimer>
 #include <QHash>
 #include <QList>
+#include <QMap>
 #include <QObject>
 #include <QPointF>
+#include <QSet>
 #include <QString>
 #include <QtQml/qqmlregistration.h>
 
@@ -18,7 +20,8 @@ struct Sample {
     QString deviceType;
     QString pointerType;
     QString capabilities;
-    QPointF position; // Scene coordinates.
+    QPointF position;       // Scene coordinates (whole pixels for Windows Ink pens).
+    QPointF globalPosition; // Screen coordinates, sub-pixel when the platform has them.
     double pressure;
     double xTilt;
     double yTilt;
@@ -43,7 +46,9 @@ class Recorder : public QObject {
 public:
     explicit Recorder(QObject *parent = nullptr);
 
-    static void configure(const QString &outputDir, const QString &mode);
+    // acceptTablet: accept and consume tablet events, as Misign's capture code
+    // will; Qt then synthesizes no mouse event from them.
+    static void configure(const QString &outputDir, const QString &mode, bool acceptTablet);
 
     // Recomputed on each call: QML polls it on a timer rather than binding to it.
     Q_INVOKABLE [[nodiscard]] QString summary() const;
@@ -69,6 +74,24 @@ private:
 
     [[nodiscard]] bool anyMouseDrawing() const;
 
+    // Running statistics per source, device and event class, kept up to date
+    // in append() so that summary() costs the same however long the session.
+    struct Group {
+        int samples = 0;
+        int contact = 0;
+        double minPressure = 1.0;
+        double maxPressure = 0.0;
+        QSet<double> pressures; // At most 1024 values through Windows Ink.
+        bool tilt = false;
+        QSet<QString> events;
+        int intervals = 0;
+        double drawingMs = 0.0;
+        double longestGap = 0.0;
+        double lastContactMs = -1.0;
+        QString capabilities;
+    };
+    QMap<QString, Group> m_groups;
+
     QElapsedTimer m_clock;
     QList<Sample> m_samples;
     // Mouse and touchpad draw as a toggle: a click starts drawing, the next
@@ -76,4 +99,5 @@ private:
     QHash<QString, bool> m_mouseDrawing;
     static inline QString s_outputDir;
     static inline QString s_mode;
+    static inline bool s_acceptTablet = false;
 };

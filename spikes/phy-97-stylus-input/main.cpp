@@ -1,9 +1,12 @@
 // PHY-97 spike: logs what Qt 6.11 delivers for stylus, touchpad and mouse input.
 //
-//   stylus-probe [--no-compress] [--wintab] [--out <dir>] [--quit-after <ms>]
+//   stylus-probe [--no-compress] [--accept-tablet] [--wintab] [--out <dir>]
+//                [--quit-after <ms>]
 //
 // --no-compress turns off Qt's compression of tablet and high-frequency events,
-// to see the full point stream. --wintab (Windows) switches from Windows Ink
+// to see the full point stream. --accept-tablet accepts and consumes tablet
+// events, as Misign will: Qt then synthesizes no mouse event from them, and the
+// QML handlers see no stylus input. --wintab (Windows) switches from Windows Ink
 // (WM_POINTER, Qt's default) to Wintab. Qt 6.11 has no platform option for it
 // any more ("windows:nowmpointer" is reported as unknown): only the private
 // QWindowsApplication::setWinTabEnabled does it.
@@ -38,6 +41,8 @@ int main(int argc, char *argv[])
     QCommandLineParser parser;
     parser.addHelpOption();
     parser.addOption({QStringLiteral("no-compress"), QStringLiteral("Deliver every input event")});
+    parser.addOption(
+        {QStringLiteral("accept-tablet"), QStringLiteral("Accept tablet events, as Misign will")});
     parser.addOption({QStringLiteral("wintab"), QStringLiteral("Use Wintab (Windows)")});
     parser.addOption({QStringLiteral("out"), QStringLiteral("Directory for the logs"),
                       QStringLiteral("dir"), QDir::currentPath()});
@@ -56,7 +61,11 @@ int main(int argc, char *argv[])
 #endif
         mode += enabled ? QStringLiteral("-wintab") : QStringLiteral("-wintab-unavailable");
     }
-    Recorder::configure(parser.value(QStringLiteral("out")), mode);
+    const bool acceptTablet = parser.isSet(QStringLiteral("accept-tablet"));
+    if (acceptTablet) {
+        mode += QStringLiteral("-accept");
+    }
+    Recorder::configure(parser.value(QStringLiteral("out")), mode, acceptTablet);
 
     QQmlApplicationEngine engine;
     QObject::connect(
