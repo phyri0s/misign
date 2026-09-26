@@ -57,17 +57,22 @@ jobs:
 
           qt_prefix="$(python3 scripts/install_qt.py --output-dir ~/Qt --print-prefix)"
           mkdir -p dist
-          PATH="$tools:$PATH" \
-          APPIMAGE_EXTRACT_AND_RUN=1 \
-          QMAKE="$qt_prefix/bin/qmake" \
-          LD_LIBRARY_PATH="$qt_prefix/lib" \
-          QML_SOURCES_PATHS="$PWD/spikes/phy-97-stylus-input" \
-          EXTRA_PLATFORM_PLUGINS="libqwayland.so" \
-          EXTRA_QT_PLUGINS="wayland-shell-integration;wayland-decoration-client;wayland-graphics-integration-client" \
-          LDAI_OUTPUT="dist/stylus-probe-linux-x86_64.AppImage" \
-            linuxdeploy --appdir "$RUNNER_TEMP/AppDir" --plugin qt --output appimage \
+          appdir="$RUNNER_TEMP/AppDir"
+          export PATH="$tools:$PATH" APPIMAGE_EXTRACT_AND_RUN=1 QMAKE="$qt_prefix/bin/qmake" \
+            LD_LIBRARY_PATH="$qt_prefix/lib"
+          QML_SOURCES_PATHS="$PWD/spikes/phy-97-stylus-input" EXTRA_PLATFORM_PLUGINS="libqwayland.so" \
+            linuxdeploy --appdir "$appdir" --plugin qt \
               --desktop-file "$RUNNER_TEMP/stylus-probe.desktop" --icon-file packaging/icons/misign.svg
-          find "$RUNNER_TEMP/AppDir/usr/plugins/platforms" -name '*.so'
+          # The Qt plugin deploys the Wayland platform plugin but not the shell,
+          # decoration and graphics integrations it loads at startup.
+          for dir in wayland-shell-integration wayland-decoration-client wayland-graphics-integration-client; do
+            cp -r "$qt_prefix/plugins/$dir" "$appdir/usr/plugins/"
+          done
+          deps=()
+          for plugin in "$appdir"/usr/plugins/wayland-*/*.so; do deps+=(--deploy-deps-only "$plugin"); done
+          LDAI_OUTPUT="dist/stylus-probe-linux-x86_64.AppImage" \
+            linuxdeploy --appdir "$appdir" "${deps[@]}" --output appimage
+          find "$appdir/usr/plugins" -name '*.so' | sort
 
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
