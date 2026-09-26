@@ -6,6 +6,7 @@
 #include <QGuiApplication>
 #include <QMap>
 #include <QMetaEnum>
+#include <QMouseEvent>
 #include <QPointerEvent>
 #include <QPointingDevice>
 #include <QSet>
@@ -28,6 +29,20 @@ QString eventName(QEvent::Type type)
     return QString::fromLatin1(QMetaEnum::fromType<QEvent::Type>().valueToKey(type));
 }
 
+// A mouse event from a real mouse or touchpad, not one Qt synthesized from a
+// stylus or a touchscreen.
+bool isPointerMouse(const QPointerEvent *event)
+{
+    if (event->type() != QEvent::MouseButtonPress && event->type() != QEvent::MouseMove &&
+        event->type() != QEvent::MouseButtonRelease) {
+        return false;
+    }
+    const QPointingDevice *device = event->pointingDevice();
+    return device && (device->type() == QInputDevice::DeviceType::Mouse ||
+                      device->type() == QInputDevice::DeviceType::TouchPad);
+}
+
+// Contact for everything but real mouse and touchpad events, which toggle.
 bool isContact(const QPointerEvent *event, const QEventPoint &point)
 {
     switch (event->type()) {
@@ -84,6 +99,12 @@ bool Recorder::eventFilter(QObject *watched, QEvent *event)
     if (event->isSinglePointEvent()) {
         buttons = static_cast<int>(static_cast<const QSinglePointEvent *>(event)->buttons());
     }
+    const bool pointerMouse = isPointerMouse(pointerEvent);
+    const QString deviceName = device ? device->name() : QString();
+    if (pointerMouse && event->type() == QEvent::MouseButtonRelease &&
+        static_cast<const QMouseEvent *>(event)->button() == Qt::LeftButton) {
+        m_mouseDrawing[deviceName] = !m_mouseDrawing.value(deviceName);
+    }
     for (const QEventPoint &point : pointerEvent->points()) {
         append({
             .elapsedMs = static_cast<double>(m_clock.nsecsElapsed()) / 1e6,
@@ -106,7 +127,8 @@ bool Recorder::eventFilter(QObject *watched, QEvent *event)
             .yTilt = tablet ? tablet->yTilt() : 0.0,
             .rotation = tablet ? tablet->rotation() : 0.0,
             .buttons = buttons,
-            .contact = isContact(pointerEvent, point),
+            .contact =
+                pointerMouse ? m_mouseDrawing.value(deviceName) : isContact(pointerEvent, point),
         });
     }
     // Never consume: Qt Quick must still deliver the event, so we also see
@@ -114,9 +136,19 @@ bool Recorder::eventFilter(QObject *watched, QEvent *event)
     return false;
 }
 
+bool Recorder::anyMouseDrawing() const
+{
+    return std::any_of(m_mouseDrawing.cbegin(), m_mouseDrawing.cend(),
+                       [](bool drawing) { return drawing; });
+}
+
 void Recorder::recordHandler(const QString &handler, double x, double y, double pressure,
                              bool pressed)
 {
+    // The hover handler never has a button pressed: it draws in toggle mode.
+    if (handler == QLatin1String("hover")) {
+        pressed = anyMouseDrawing();
+    }
     append({
         .elapsedMs = static_cast<double>(m_clock.nsecsElapsed()) / 1e6,
         .eventTime = 0,
@@ -145,6 +177,7 @@ void Recorder::append(Sample sample)
 void Recorder::clear()
 {
     m_samples.clear();
+    m_mouseDrawing.clear();
     emit changed();
 }
 

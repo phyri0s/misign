@@ -5,7 +5,8 @@
 #include <QQuickPaintedItem>
 #include <QtQml/qqmlregistration.h>
 
-// Draws the raw window samples in contact, one polyline per stroke and device,
+// Draws the raw window samples while drawing (stylus in contact, or mouse and
+// touchpad between two clicks), one polyline per stroke and device,
 // with a width following the pressure: what a naive renderer would get.
 class InkView : public QQuickPaintedItem {
     Q_OBJECT

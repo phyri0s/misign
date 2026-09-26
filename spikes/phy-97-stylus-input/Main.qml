@@ -31,6 +31,12 @@ Window {
         acceptedDevices: PointerDevice.TouchPad | PointerDevice.TouchScreen
         onPointChanged: Recorder.recordHandler("touch", point.position.x, point.position.y, point.pressure, active)
     }
+    // Mouse and touchpad draw in toggle mode, with no button held: what a QML
+    // UI would get is hover.
+    HoverHandler {
+        acceptedDevices: PointerDevice.Mouse | PointerDevice.TouchPad
+        onPointChanged: Recorder.recordHandler("hover", point.position.x, point.position.y, point.pressure, hovered)
+    }
 
     Item {
         anchors.fill: parent
@@ -61,7 +67,7 @@ Window {
             spacing: 4
 
             Text {
-                text: "Draw with the stylus, the touchpad and the mouse. C: clear, S: save, P: toggle points"
+                text: "Stylus: draw while touching. Mouse and touchpad: click to start drawing, click again to stop. C: clear, S: save, P: toggle points"
                 font.bold: true
                 wrapMode: Text.Wrap
                 width: parent.width

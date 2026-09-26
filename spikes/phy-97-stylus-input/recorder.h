@@ -1,6 +1,7 @@
 #pragma once
 
 #include <QElapsedTimer>
+#include <QHash>
 #include <QList>
 #include <QObject>
 #include <QPointF>
@@ -28,7 +29,11 @@ struct Sample {
 
 // Records every pointer event reaching the window (installed as an event
 // filter, so it sees events before Qt Quick delivers them), plus what QML
-// PointHandlers report. Writes a CSV log and a per-device summary.
+// handlers report. Writes a CSV log and a per-device summary.
+//
+// "Contact" means drawing: the stylus draws while it touches the surface; the
+// mouse and the touchpad draw between a click that starts drawing and a click
+// that stops it, with no button held.
 class Recorder : public QObject {
     Q_OBJECT
     QML_ELEMENT
@@ -59,8 +64,13 @@ signals:
 private:
     void append(Sample sample);
 
+    [[nodiscard]] bool anyMouseDrawing() const;
+
     QElapsedTimer m_clock;
     QList<Sample> m_samples;
+    // Mouse and touchpad draw as a toggle: a click starts drawing, the next
+    // click stops it. Per device name.
+    QHash<QString, bool> m_mouseDrawing;
     static inline QString s_outputDir;
     static inline QString s_mode;
 };
