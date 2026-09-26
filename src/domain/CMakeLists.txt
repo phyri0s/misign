@@ -5,6 +5,8 @@ add_library(misign_domain STATIC
     point.h
     signature.cpp
     signature.h
+    smoothing.cpp
+    smoothing.h
     stroke.cpp
     stroke.h
 )
