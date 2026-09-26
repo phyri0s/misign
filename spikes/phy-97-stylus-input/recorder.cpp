@@ -208,6 +208,9 @@ QString Recorder::summary() const
     };
     QMap<QString, Group> groups;
     for (const Sample &s : m_samples) {
+        if (s.source == QLatin1String("marker")) {
+            continue;
+        }
         // Split by event class too: Qt sends mouse events synthesized from the
         // stylus with the stylus device, microseconds after the tablet event.
         const QString key = s.source + QStringLiteral(" | ") +

@@ -48,6 +48,12 @@ Window {
                 status.text = "Saved: " + Recorder.save();
             } else if (event.key === Qt.Key_P) {
                 ink.showPoints = !ink.showPoints;
+            } else if (event.key === Qt.Key_T) {
+                Recorder.mark("touchpad");
+                status.text = "Marker: touchpad";
+            } else if (event.key === Qt.Key_M) {
+                Recorder.mark("mouse");
+                status.text = "Marker: mouse";
             }
         }
     }
@@ -67,7 +73,7 @@ Window {
             spacing: 4
 
             Text {
-                text: "Stylus: draw while touching. Mouse and touchpad: click to start drawing, click again to stop. C: clear, S: save, P: toggle points"
+                text: "Stylus: draw while touching. Mouse and touchpad: click to start drawing, click again to stop. T before using the touchpad, M before using the mouse. C: clear, S: save, P: toggle points"
                 font.bold: true
                 wrapMode: Text.Wrap
                 width: parent.width
