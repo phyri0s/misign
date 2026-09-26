@@ -39,7 +39,7 @@ Stylus and touchpad input must always be tested on the host system, including un
 
 ### Dev container
 
-The dev container (VS Code or JetBrains) ships CMake, Qt 6.11 with Qt PDF, PoDoFo and the PDF tools (`qpdf`, Ghostscript). Open the repository and choose "Reopen in Container".
+The dev container (VS Code or JetBrains) ships CMake, Qt 6.11 with Qt PDF, PoDoFo, gcovr and the PDF tools (`qpdf`, Ghostscript). Open the repository and choose "Reopen in Container".
 
 The application window is displayed through X11: WSLg on Windows, the host X server or XWayland on Linux (you may need `xhost +local:` there). Container builds go to `build-container/`, so they never clash with host builds in `build/`.
 
@@ -73,6 +73,20 @@ ctest --preset debug -L unit      # unit tests only
 ```
 
 Use the `release` preset for an optimized build. Pass `-DMISIGN_WARNINGS_AS_ERRORS=ON` to fail on compiler warnings, and `-DMISIGN_REQUIRE_TEST_TOOLS=ON` to fail the configuration when `qpdf` or Python 3 is missing instead of skipping their tests (CI sets both).
+
+### Code coverage
+
+Coverage needs GCC and [gcovr](https://gcovr.com/) (`pipx install gcovr`, already in the dev container). The `coverage` preset instruments the build; gcovr then reports on `src/` only, as configured in `gcovr.cfg`:
+
+```sh
+cmake --preset coverage
+cmake --build --preset coverage
+ctest --preset coverage
+mkdir -p build/coverage/report
+gcovr build/coverage --html-nested build/coverage/report/index.html   # prints the totals
+```
+
+Open `build/coverage/report/index.html` for the per-directory and per-line view (`build-container/` in the dev container). On pull requests, the "Coverage" CI job writes the summary to the run page and publishes the HTML report as the `coverage-report` artifact.
 
 ## Contributing
 
