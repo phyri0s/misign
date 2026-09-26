@@ -2,7 +2,7 @@
 
 Throwaway probe answering one question before the Drawing milestone: does Qt 6.11 give Misign usable pressure and a dense enough point stream from a stylus, and a usable stream from a touchpad and a mouse, on Windows and Linux? It is not part of the Misign build and is not maintained.
 
-**Answer, Windows: yes for the stylus**, through Windows Ink (Qt's default), provided the GUI thread stays light while drawing. Touchpad, mouse and Linux are not observed yet. Details below; each finding says whether it was observed with the probe or read in documentation or source code.
+**Answer, Windows: yes for the stylus**, through Windows Ink (Qt's default), provided the GUI thread stays light while drawing. Touchpad, mouse and Linux are not observed yet (PHY-109). Details below; each finding says whether it was observed with the probe or read in documentation or source code.
 
 ## The probe
 
@@ -49,7 +49,7 @@ Not observed on Windows: the touchpad (none on the test machine), the mouse in t
 
 ### Linux
 
-Not observed yet: the probe runs as an AppImage on X11 and Wayland (checked under WSLg, without a stylus), and waits for a run on an Ubuntu machine with the tablet.
+Not observed yet: the probe runs as an AppImage on X11 and Wayland (checked under WSLg, without a stylus), and waits for a run on an Ubuntu machine with the tablet. That run, and the touchpad and mouse checks on Windows, are tracked in PHY-109.
 
 ## Recommendation for `IInputSource` (PHY-101)
 
