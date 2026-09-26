@@ -35,6 +35,21 @@ PdfRect rectFromJson(const QJsonArray &values)
             values.at(3).toDouble()};
 }
 
+// A box of the manifest, null when absent.
+std::optional<PdfRect> optionalRectFromJson(const QJsonValue &value)
+{
+    if (value.isNull()) {
+        return std::nullopt;
+    }
+    return rectFromJson(value.toArray());
+}
+
+bool near(const PdfRect &actual, const PdfRect &expected)
+{
+    return near(actual.left, expected.left) && near(actual.bottom, expected.bottom) &&
+           near(actual.right, expected.right) && near(actual.top, expected.top);
+}
+
 PageGeometry a4(Rotation rotation)
 {
     return {{0.0, 0.0, kA4Width, kA4Height}, std::nullopt, rotation};
@@ -130,9 +145,10 @@ void TestPageGeometry::swapsDisplayedSizeWhenSideways()
     QCOMPARE(a4(Rotation::Clockwise270).displayedHeight(), kA4Width);
 }
 
-// Every page of tests/fixtures/pdf/manifest.json: the corners of the page as
-// displayed, selected on screen at several zoom levels, land on the user-space
-// coordinates that the fixtures print on each page.
+// Every page of tests/fixtures/pdf/manifest.json, built from its boxes and
+// /Rotate as written in the file (after inheritance): the visible area matches,
+// and the corners of the page as displayed, selected on screen at several zoom
+// levels, land on the user-space coordinates that the fixtures print on each page.
 void TestPageGeometry::mapsDisplayedCornersOfTheCorpus_data()
 {
     QTest::addColumn<QJsonObject>("page");
@@ -161,8 +177,15 @@ void TestPageGeometry::mapsDisplayedCornersOfTheCorpus()
     QFETCH(double, scale);
 
     const PageGeometry geometry(rectFromJson(page[QStringLiteral("media_box")].toArray()),
-                                rectFromJson(page[QStringLiteral("crop_box")].toArray()),
+                                optionalRectFromJson(page[QStringLiteral("crop_box")]),
                                 rotationFromDegrees(page[QStringLiteral("rotate")].toInt()));
+    const std::optional<PdfRect> visible =
+        optionalRectFromJson(page[QStringLiteral("visible_box")]);
+    QCOMPARE(geometry.hasVisibleArea(), visible.has_value());
+    if (!visible) {
+        return; // Nothing displayed: no corner to select.
+    }
+    QVERIFY(near(geometry.visibleBox(), *visible));
     const QJsonArray size = page[QStringLiteral("displayed_size")].toArray();
     QVERIFY(near(geometry.displayedWidth(), size.at(0).toDouble()));
     QVERIFY(near(geometry.displayedHeight(), size.at(1).toDouble()));

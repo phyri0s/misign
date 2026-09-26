@@ -7,13 +7,16 @@
         595.276,
         841.89
       ],
-      "crop_box": [
+      "crop_box": null,
+      "rotate": 0,
+      "user_unit": 1,
+      "inherited": [],
+      "visible_box": [
         0,
         0,
         595.276,
         841.89
       ],
-      "rotate": 0,
       "displayed_size": [
         595.276,
         841.89
@@ -46,13 +49,16 @@
         841.89,
         595.276
       ],
-      "crop_box": [
+      "crop_box": null,
+      "rotate": 0,
+      "user_unit": 1,
+      "inherited": [],
+      "visible_box": [
         0,
         0,
         841.89,
         595.276
       ],
-      "rotate": 0,
       "displayed_size": [
         841.89,
         595.276
@@ -85,13 +91,16 @@
         612.0,
         792.0
       ],
-      "crop_box": [
+      "crop_box": null,
+      "rotate": 0,
+      "user_unit": 1,
+      "inherited": [],
+      "visible_box": [
         0,
         0,
         612.0,
         792.0
       ],
-      "rotate": 0,
       "displayed_size": [
         612.0,
         792.0
@@ -124,13 +133,16 @@
         792.0,
         612.0
       ],
-      "crop_box": [
+      "crop_box": null,
+      "rotate": 0,
+      "user_unit": 1,
+      "inherited": [],
+      "visible_box": [
         0,
         0,
         792.0,
         612.0
       ],
-      "rotate": 0,
       "displayed_size": [
         792.0,
         612.0
@@ -163,13 +175,16 @@
         595.276,
         841.89
       ],
-      "crop_box": [
+      "crop_box": null,
+      "rotate": 90,
+      "user_unit": 1,
+      "inherited": [],
+      "visible_box": [
         0,
         0,
         595.276,
         841.89
       ],
-      "rotate": 90,
       "displayed_size": [
         841.89,
         595.276
@@ -202,13 +217,16 @@
         595.276,
         841.89
       ],
-      "crop_box": [
+      "crop_box": null,
+      "rotate": 180,
+      "user_unit": 1,
+      "inherited": [],
+      "visible_box": [
         0,
         0,
         595.276,
         841.89
       ],
-      "rotate": 180,
       "displayed_size": [
         595.276,
         841.89
@@ -241,13 +259,16 @@
         595.276,
         841.89
       ],
-      "crop_box": [
+      "crop_box": null,
+      "rotate": 270,
+      "user_unit": 1,
+      "inherited": [],
+      "visible_box": [
         0,
         0,
         595.276,
         841.89
       ],
-      "rotate": 270,
       "displayed_size": [
         841.89,
         595.276
@@ -287,6 +308,14 @@
         931.89
       ],
       "rotate": 0,
+      "user_unit": 1,
+      "inherited": [],
+      "visible_box": [
+        60,
+        90,
+        655.276,
+        931.89
+      ],
       "displayed_size": [
         595.276,
         841.89
@@ -319,13 +348,16 @@
         595.276,
         841.89
       ],
-      "crop_box": [
+      "crop_box": null,
+      "rotate": 0,
+      "user_unit": 1,
+      "inherited": [],
+      "visible_box": [
         0,
         0,
         595.276,
         841.89
       ],
-      "rotate": 0,
       "displayed_size": [
         595.276,
         841.89
@@ -356,13 +388,16 @@
         792.0,
         612.0
       ],
-      "crop_box": [
+      "crop_box": null,
+      "rotate": 0,
+      "user_unit": 1,
+      "inherited": [],
+      "visible_box": [
         0,
         0,
         792.0,
         612.0
       ],
-      "rotate": 0,
       "displayed_size": [
         792.0,
         612.0
@@ -393,13 +428,16 @@
         595.276,
         841.89
       ],
-      "crop_box": [
-        0,
-        0,
-        595.276,
-        841.89
-      ],
+      "crop_box": null,
       "rotate": 90,
+      "user_unit": 1,
+      "inherited": [],
+      "visible_box": [
+        0,
+        0,
+        595.276,
+        841.89
+      ],
       "displayed_size": [
         841.89,
         595.276
@@ -437,6 +475,14 @@
         931.89
       ],
       "rotate": 180,
+      "user_unit": 1,
+      "inherited": [],
+      "visible_box": [
+        60,
+        90,
+        655.276,
+        931.89
+      ],
       "displayed_size": [
         595.276,
         841.89
@@ -474,6 +520,14 @@
         822.0
       ],
       "rotate": 270,
+      "user_unit": 1,
+      "inherited": [],
+      "visible_box": [
+        20,
+        30,
+        632.0,
+        822.0
+      ],
       "displayed_size": [
         792.0,
         612.0
@@ -498,6 +552,554 @@
       }
     }
   ],
+  "a4-rotate-unusual.pdf": [
+    {
+      "media_box": [
+        0,
+        0,
+        595.276,
+        841.89
+      ],
+      "crop_box": null,
+      "rotate": -90,
+      "user_unit": 1,
+      "inherited": [],
+      "visible_box": [
+        0,
+        0,
+        595.276,
+        841.89
+      ],
+      "displayed_size": [
+        841.89,
+        595.276
+      ],
+      "displayed_corners_in_user_space": {
+        "bottom_left": [
+          0,
+          841.89
+        ],
+        "bottom_right": [
+          0.0,
+          0.0
+        ],
+        "top_left": [
+          595.276,
+          841.89
+        ],
+        "top_right": [
+          595.276,
+          0.0
+        ]
+      }
+    },
+    {
+      "media_box": [
+        0,
+        0,
+        595.276,
+        841.89
+      ],
+      "crop_box": null,
+      "rotate": 450,
+      "user_unit": 1,
+      "inherited": [],
+      "visible_box": [
+        0,
+        0,
+        595.276,
+        841.89
+      ],
+      "displayed_size": [
+        841.89,
+        595.276
+      ],
+      "displayed_corners_in_user_space": {
+        "bottom_left": [
+          595.276,
+          0
+        ],
+        "bottom_right": [
+          595.276,
+          841.89
+        ],
+        "top_left": [
+          0.0,
+          0.0
+        ],
+        "top_right": [
+          0.0,
+          841.89
+        ]
+      }
+    },
+    {
+      "media_box": [
+        0,
+        0,
+        595.276,
+        841.89
+      ],
+      "crop_box": null,
+      "rotate": 135,
+      "user_unit": 1,
+      "inherited": [],
+      "visible_box": [
+        0,
+        0,
+        595.276,
+        841.89
+      ],
+      "displayed_size": [
+        841.89,
+        595.276
+      ],
+      "displayed_corners_in_user_space": {
+        "bottom_left": [
+          595.276,
+          0
+        ],
+        "bottom_right": [
+          595.276,
+          841.89
+        ],
+        "top_left": [
+          0.0,
+          0.0
+        ],
+        "top_right": [
+          0.0,
+          841.89
+        ]
+      }
+    },
+    {
+      "media_box": [
+        0,
+        0,
+        595.276,
+        841.89
+      ],
+      "crop_box": null,
+      "rotate": 45,
+      "user_unit": 1,
+      "inherited": [],
+      "visible_box": [
+        0,
+        0,
+        595.276,
+        841.89
+      ],
+      "displayed_size": [
+        595.276,
+        841.89
+      ],
+      "displayed_corners_in_user_space": {
+        "bottom_left": [
+          0,
+          0
+        ],
+        "bottom_right": [
+          595.276,
+          0.0
+        ],
+        "top_left": [
+          0.0,
+          841.89
+        ],
+        "top_right": [
+          595.276,
+          841.89
+        ]
+      }
+    }
+  ],
+  "inherited-attributes.pdf": [
+    {
+      "media_box": [
+        0,
+        0,
+        595.276,
+        841.89
+      ],
+      "crop_box": null,
+      "rotate": 90,
+      "user_unit": 1,
+      "inherited": [
+        "MediaBox",
+        "Rotate"
+      ],
+      "visible_box": [
+        0,
+        0,
+        595.276,
+        841.89
+      ],
+      "displayed_size": [
+        841.89,
+        595.276
+      ],
+      "displayed_corners_in_user_space": {
+        "bottom_left": [
+          595.276,
+          0
+        ],
+        "bottom_right": [
+          595.276,
+          841.89
+        ],
+        "top_left": [
+          0.0,
+          0.0
+        ],
+        "top_right": [
+          0.0,
+          841.89
+        ]
+      }
+    },
+    {
+      "media_box": [
+        0,
+        0,
+        700,
+        950
+      ],
+      "crop_box": [
+        60,
+        90,
+        655.276,
+        931.89
+      ],
+      "rotate": 180,
+      "user_unit": 1,
+      "inherited": [
+        "MediaBox",
+        "CropBox",
+        "Rotate"
+      ],
+      "visible_box": [
+        60,
+        90,
+        655.276,
+        931.89
+      ],
+      "displayed_size": [
+        595.276,
+        841.89
+      ],
+      "displayed_corners_in_user_space": {
+        "bottom_left": [
+          655.276,
+          931.89
+        ],
+        "bottom_right": [
+          60.0,
+          931.89
+        ],
+        "top_left": [
+          655.276,
+          90.0
+        ],
+        "top_right": [
+          60.0,
+          90.0
+        ]
+      }
+    },
+    {
+      "media_box": [
+        0,
+        0,
+        700,
+        950
+      ],
+      "crop_box": [
+        60,
+        90,
+        655.276,
+        931.89
+      ],
+      "rotate": 0,
+      "user_unit": 1,
+      "inherited": [
+        "MediaBox",
+        "CropBox"
+      ],
+      "visible_box": [
+        60,
+        90,
+        655.276,
+        931.89
+      ],
+      "displayed_size": [
+        595.276,
+        841.89
+      ],
+      "displayed_corners_in_user_space": {
+        "bottom_left": [
+          60,
+          90
+        ],
+        "bottom_right": [
+          655.276,
+          90.0
+        ],
+        "top_left": [
+          60.0,
+          931.89
+        ],
+        "top_right": [
+          655.276,
+          931.89
+        ]
+      }
+    },
+    {
+      "media_box": [
+        0,
+        0,
+        792.0,
+        612.0
+      ],
+      "crop_box": null,
+      "rotate": 90,
+      "user_unit": 1,
+      "inherited": [
+        "Rotate"
+      ],
+      "visible_box": [
+        0,
+        0,
+        792.0,
+        612.0
+      ],
+      "displayed_size": [
+        612.0,
+        792.0
+      ],
+      "displayed_corners_in_user_space": {
+        "bottom_left": [
+          792.0,
+          0
+        ],
+        "bottom_right": [
+          792.0,
+          612.0
+        ],
+        "top_left": [
+          0.0,
+          0.0
+        ],
+        "top_right": [
+          0.0,
+          612.0
+        ]
+      }
+    }
+  ],
+  "degenerate-boxes.pdf": [
+    {
+      "media_box": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "crop_box": [
+        60,
+        90,
+        655.276,
+        931.89
+      ],
+      "rotate": 0,
+      "user_unit": 1,
+      "inherited": [],
+      "visible_box": [
+        60,
+        90,
+        612.0,
+        792.0
+      ],
+      "displayed_size": [
+        552.0,
+        702.0
+      ],
+      "displayed_corners_in_user_space": {
+        "bottom_left": [
+          60,
+          90
+        ],
+        "bottom_right": [
+          612.0,
+          90.0
+        ],
+        "top_left": [
+          60.0,
+          792.0
+        ],
+        "top_right": [
+          612.0,
+          792.0
+        ]
+      }
+    },
+    {
+      "media_box": [
+        0,
+        0,
+        700,
+        950
+      ],
+      "crop_box": [
+        60,
+        90,
+        60,
+        90
+      ],
+      "rotate": 0,
+      "user_unit": 1,
+      "inherited": [],
+      "visible_box": [
+        0,
+        0,
+        700,
+        950
+      ],
+      "displayed_size": [
+        700,
+        950
+      ],
+      "displayed_corners_in_user_space": {
+        "bottom_left": [
+          0,
+          0
+        ],
+        "bottom_right": [
+          700,
+          0
+        ],
+        "top_left": [
+          0,
+          950
+        ],
+        "top_right": [
+          700,
+          950
+        ]
+      }
+    },
+    {
+      "media_box": [
+        0,
+        0,
+        700,
+        950
+      ],
+      "crop_box": [
+        800,
+        800,
+        900,
+        900
+      ],
+      "rotate": 0,
+      "user_unit": 1,
+      "inherited": [],
+      "visible_box": null,
+      "displayed_size": [
+        0,
+        0
+      ],
+      "displayed_corners_in_user_space": {}
+    },
+    {
+      "media_box": [
+        0,
+        0,
+        700,
+        950
+      ],
+      "crop_box": [
+        -20,
+        100,
+        800,
+        900
+      ],
+      "rotate": 0,
+      "user_unit": 1,
+      "inherited": [],
+      "visible_box": [
+        0,
+        100,
+        700,
+        900
+      ],
+      "displayed_size": [
+        700,
+        800
+      ],
+      "displayed_corners_in_user_space": {
+        "bottom_left": [
+          0,
+          100
+        ],
+        "bottom_right": [
+          700,
+          100
+        ],
+        "top_left": [
+          0,
+          900
+        ],
+        "top_right": [
+          700,
+          900
+        ]
+      }
+    }
+  ],
+  "a4-userunit-2.pdf": [
+    {
+      "media_box": [
+        0,
+        0,
+        297.638,
+        420.945
+      ],
+      "crop_box": null,
+      "rotate": 0,
+      "user_unit": 2,
+      "inherited": [],
+      "visible_box": [
+        0,
+        0,
+        297.638,
+        420.945
+      ],
+      "displayed_size": [
+        297.638,
+        420.945
+      ],
+      "displayed_corners_in_user_space": {
+        "bottom_left": [
+          0,
+          0
+        ],
+        "bottom_right": [
+          297.638,
+          0.0
+        ],
+        "top_left": [
+          0.0,
+          420.945
+        ],
+        "top_right": [
+          297.638,
+          420.945
+        ]
+      }
+    }
+  ],
   "signed-a4.pdf": [
     {
       "media_box": [
@@ -506,13 +1108,142 @@
         595.276,
         841.89
       ],
-      "crop_box": [
+      "crop_box": null,
+      "rotate": 0,
+      "user_unit": 1,
+      "inherited": [],
+      "visible_box": [
         0,
         0,
         595.276,
         841.89
       ],
+      "displayed_size": [
+        595.276,
+        841.89
+      ],
+      "displayed_corners_in_user_space": {
+        "bottom_left": [
+          0,
+          0
+        ],
+        "bottom_right": [
+          595.276,
+          0.0
+        ],
+        "top_left": [
+          0.0,
+          841.89
+        ],
+        "top_right": [
+          595.276,
+          841.89
+        ]
+      }
+    }
+  ],
+  "certified-p1-a4.pdf": [
+    {
+      "media_box": [
+        0,
+        0,
+        595.276,
+        841.89
+      ],
+      "crop_box": null,
       "rotate": 0,
+      "user_unit": 1,
+      "inherited": [],
+      "visible_box": [
+        0,
+        0,
+        595.276,
+        841.89
+      ],
+      "displayed_size": [
+        595.276,
+        841.89
+      ],
+      "displayed_corners_in_user_space": {
+        "bottom_left": [
+          0,
+          0
+        ],
+        "bottom_right": [
+          595.276,
+          0.0
+        ],
+        "top_left": [
+          0.0,
+          841.89
+        ],
+        "top_right": [
+          595.276,
+          841.89
+        ]
+      }
+    }
+  ],
+  "certified-p2-a4.pdf": [
+    {
+      "media_box": [
+        0,
+        0,
+        595.276,
+        841.89
+      ],
+      "crop_box": null,
+      "rotate": 0,
+      "user_unit": 1,
+      "inherited": [],
+      "visible_box": [
+        0,
+        0,
+        595.276,
+        841.89
+      ],
+      "displayed_size": [
+        595.276,
+        841.89
+      ],
+      "displayed_corners_in_user_space": {
+        "bottom_left": [
+          0,
+          0
+        ],
+        "bottom_right": [
+          595.276,
+          0.0
+        ],
+        "top_left": [
+          0.0,
+          841.89
+        ],
+        "top_right": [
+          595.276,
+          841.89
+        ]
+      }
+    }
+  ],
+  "certified-p3-a4.pdf": [
+    {
+      "media_box": [
+        0,
+        0,
+        595.276,
+        841.89
+      ],
+      "crop_box": null,
+      "rotate": 0,
+      "user_unit": 1,
+      "inherited": [],
+      "visible_box": [
+        0,
+        0,
+        595.276,
+        841.89
+      ],
       "displayed_size": [
         595.276,
         841.89
@@ -545,13 +1276,16 @@
         595.276,
         841.89
       ],
-      "crop_box": [
+      "crop_box": null,
+      "rotate": 0,
+      "user_unit": 1,
+      "inherited": [],
+      "visible_box": [
         0,
         0,
         595.276,
         841.89
       ],
-      "rotate": 0,
       "displayed_size": [
         595.276,
         841.89

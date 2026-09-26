@@ -1,0 +1,49 @@
+%PDF-1.7
+%‚„œ”
+1 0 obj
+<< /Type /Catalog /Pages 3 0 R >>
+endobj
+2 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>
+endobj
+3 0 obj
+<< /Type /Pages /Kids [5 0 R] /Count 1 >>
+endobj
+4 0 obj
+<< /Length 822 >>
+stream
+q 1 0 0 1 0 0 cm
+0 0 0.8 RG 2 w 5 5 287.638 410.945 re S
+148.819 300.945 m 148.819 390.945 l S
+0 0 0.8 rg 136.819 370.945 m 148.819 395.945 l 160.819 370.945 l f
+0 g
+BT /F1 12 Tf 166.819 360.945 Td (TOP) Tj ET
+BT /F1 14 Tf 40 250.472 Td (misign fixture: a4-userunit-2.pdf) Tj ET
+BT /F1 11 Tf 40 232.472 Td (page 1 of 1) Tj ET
+BT /F1 11 Tf 40 214.472 Td (MediaBox [0 0 297.638 420.945]) Tj ET
+BT /F1 11 Tf 40 196.472 Td (CropBox = MediaBox) Tj ET
+BT /F1 11 Tf 40 178.472 Td (Rotate 0) Tj ET
+BT /F1 11 Tf 40 160.472 Td (UserUnit 2: 1 unit = 2/72 inch) Tj ET
+BT /F1 8 Tf 12 14 Td (bottom_left: user \(0, 0\)) Tj ET
+BT /F1 8 Tf 147.638 14 Td (bottom_right: user \(297.638, 0\)) Tj ET
+BT /F1 8 Tf 12 398.945 Td (top_left: user \(0, 420.945\)) Tj ET
+BT /F1 8 Tf 147.638 398.945 Td (top_right: user \(297.638, 420.945\)) Tj ET
+Q
+endstream
+endobj
+5 0 obj
+<< /Type /Page /Parent 3 0 R /MediaBox [0 0 297.638 420.945] /Resources << /Font << /F1 2 0 R >> >> /Contents 4 0 R /UserUnit 2 >>
+endobj
+xref
+0 6
+0000000000 65535 f 
+0000000015 00000 n 
+0000000064 00000 n 
+0000000161 00000 n 
+0000000218 00000 n 
+0000001090 00000 n 
+trailer
+<< /Size 6 /Root 1 0 R /ID [<3d4d7ed08a80880c555e652a6e2955d4> <3d4d7ed08a80880c555e652a6e2955d4>] >>
+startxref
+1236
+%%EOF

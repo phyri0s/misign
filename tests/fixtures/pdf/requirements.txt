@@ -1,4 +1,4 @@
-# Only needed to regenerate signed-a4.pdf (see README.md).
+# Only needed to regenerate the signed and certified files (see README.md).
 pyHanko==0.37.0
 pyhanko-certvalidator==0.32.1
 cryptography==50.0.1
