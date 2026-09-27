@@ -41,6 +41,20 @@ bool near(ScreenPoint a, ScreenPoint b)
     return std::hypot(a.x - b.x, a.y - b.y) < 1e-9;
 }
 
+// The length of the curve, from a fine polyline (never longer than the curve).
+double arcLength(const CubicBezier &c)
+{
+    constexpr int kSteps = 256;
+    double length = 0.0;
+    ScreenPoint previous = c.start;
+    for (int i = 1; i <= kSteps; ++i) {
+        const ScreenPoint p = c.at(static_cast<double>(i) / kSteps);
+        length += std::hypot(p.x - previous.x, p.y - previous.y);
+        previous = p;
+    }
+    return length;
+}
+
 // Whether every piece lies on its parent segment: the pieces of a segment
 // split into k equal parts are, at their own parameter 0.5, the segment at
 // (j + 0.5) / k.
@@ -81,9 +95,11 @@ private slots:
     void slowerMouseDrawsWider();
     void touchpadFollowsSpeedLikeTheMouse();
     void burstsWithTheSameTimestampKeepTheSpeed();
+    void mouseStrokeStartsAtItsSpeed();
     void smoothsASuddenPressureChange();
     void piecesFollowTheSmoothedCurveAndJoin();
     void piecesAreShortAndTakeTheLocalWidth();
+    void piecesStayShortOnLongHandles();
     void dotGivesOnePiece();
 };
 
@@ -139,7 +155,8 @@ void TestInk::touchpadFollowsSpeedLikeTheMouse()
 }
 
 // PHY-97: samples arrive in bursts sharing a timestamp. A zero interval must
-// neither divide by zero nor reset the speed.
+// neither divide by zero nor lose the distance the burst covered: 3 samples
+// 10 units apart every 15 ms is 2 units/ms, so 4.5 / (1 + 2) = 1.5 wide.
 void TestInk::burstsWithTheSameTimestampKeepTheSpeed()
 {
     Stroke stroke(InputMode::Mouse);
@@ -150,9 +167,20 @@ void TestInk::burstsWithTheSameTimestampKeepTheSpeed()
     const auto widths = strokeWidths(stroke);
 
     for (const double w : widths) {
-        QVERIFY(std::isfinite(w));
+        QVERIFY(std::abs(w - 1.5) < 1e-9);
     }
-    QVERIFY(last(widths) < InkOptions{}.maxWidth);
+}
+
+// A stroke started while the pointer is already moving (toggle mode) draws at
+// its speed from the first point, without a wide blob at the start.
+void TestInk::mouseStrokeStartsAtItsSpeed()
+{
+    const auto widths = strokeWidths(line(InputMode::Mouse, 20, 6.0, 8ms));
+
+    // 6 units every 8 ms is 0.75 units/ms: 4.5 / 1.75.
+    for (const double w : widths) {
+        QVERIFY(std::abs(w - (4.5 / 1.75)) < 1e-9);
+    }
 }
 
 void TestInk::smoothsASuddenPressureChange()
@@ -201,15 +229,31 @@ void TestInk::piecesAreShortAndTakeTheLocalWidth()
     const auto pieces = inkPieces(smooth(stroke), stroke, strokeWidths(stroke, options), options);
 
     for (std::size_t i = 0; i < pieces.size(); ++i) {
-        const CubicBezier &c = pieces[i].curve;
-        QVERIFY(std::hypot(c.end.x - c.start.x, c.end.y - c.start.y) <=
-                options.maxPieceLength + 1e-9);
+        QVERIFY(arcLength(pieces[i].curve) <= options.maxPieceLength + 1e-9);
         QVERIFY(pieces[i].width >= options.minWidth && pieces[i].width <= options.maxWidth);
         if (i > 0) {
             QVERIFY(pieces[i].width >= pieces[i - 1].width);
         }
     }
     QVERIFY(pieces.back().width > pieces.front().width + 1.0);
+}
+
+// Handles as long as the chord, which the fitter allows: the curve is much
+// longer than its chord, and its speed varies a lot along t.
+void TestInk::piecesStayShortOnLongHandles()
+{
+    Stroke stroke(InputMode::Stylus);
+    stroke.addPoint(Point(0.0, 0.0, 0.5, 0ms));
+    stroke.addPoint(Point(40.0, 0.0, 0.5, 5ms));
+    const std::vector<CubicBezier> chain{
+        {{0.0, 0.0}, {40.0, 40.0}, {0.0, 40.0}, {40.0, 0.0}, 0, 1}};
+    const InkOptions options;
+
+    const auto pieces = inkPieces(chain, stroke, strokeWidths(stroke, options), options);
+
+    for (const auto &piece : pieces) {
+        QVERIFY(arcLength(piece.curve) <= options.maxPieceLength + 1e-9);
+    }
 }
 
 void TestInk::dotGivesOnePiece()
