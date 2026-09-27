@@ -16,6 +16,12 @@ misign_add_test(tst_smoothing
     LIBRARIES misign_domain
 )
 
+misign_add_test(tst_ink
+    LABEL unit
+    SOURCES tst_ink.cpp
+    LIBRARIES misign_domain
+)
+
 misign_add_test(tst_page_geometry
     LABEL unit
     SOURCES tst_page_geometry.cpp

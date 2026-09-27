@@ -8,6 +8,7 @@
 #include <utility>
 
 using misign::domain::AffineMatrix;
+using misign::domain::InkOptions;
 using misign::domain::InputMode;
 using misign::domain::PageGeometry;
 using misign::domain::PdfPoint;
@@ -44,10 +45,11 @@ Stroke stroke(std::initializer_list<std::pair<double, double>> positions,
 }
 
 // The fitting matrix, or an all-zero matrix when there is none, which fails
-// every position check.
-AffineMatrix fitted(const Signature &sig, const PdfRect &box)
+// every position check. By default it fits the points alone, without room for
+// the ink.
+AffineMatrix fitted(const Signature &sig, const PdfRect &box, double inkMargin = 0.0)
 {
-    const std::optional<AffineMatrix> matrix = sig.fitInto(box);
+    const std::optional<AffineMatrix> matrix = sig.fitInto(box, inkMargin);
     return matrix ? *matrix : AffineMatrix{0.0, 0.0, 0.0, 0.0, 0.0, 0.0};
 }
 
@@ -77,6 +79,8 @@ private slots:
     void fitsAStraightLineAlongItsLength();
     void movesASingleDotToTheCentre();
     void staysUprightOnARotatedPage();
+    void leavesRoomForTheInk();
+    void fitsAStraightLineAndItsInkThickness();
 };
 
 void TestSignature::strokeKeepsItsPointsInOrder()
@@ -204,6 +208,37 @@ void TestSignature::staysUprightOnARotatedPage()
                  page.toUser(ScreenPoint{selection.left, selection.top}, kScale)));
     QVERIFY(near(toUserSpace({200.0, 50.0}),
                  page.toUser(ScreenPoint{selection.right, selection.bottom}, kScale)));
+}
+
+// The ink reaches half the widest stroke beyond the points: that edge, not the
+// points, lands on the box's edges, so nothing is clipped.
+void TestSignature::leavesRoomForTheInk()
+{
+    const Signature sig = signature({stroke({{0.0, 0.0}, {200.0, 50.0}})});
+    const double margin = InkOptions{}.maxWidth / 2.0;
+
+    // The default margin: no fitted() here, which passes its own.
+    const AffineMatrix m = sig.fitInto(PdfRect{100.0, 100.0, 300.0, 300.0})
+                               .value_or(AffineMatrix{0.0, 0.0, 0.0, 0.0, 0.0, 0.0});
+
+    // The ink is (200 + 2 margin) wide: it spans the box's width, and its
+    // height is centred on the box's centre, y = 200.
+    const double scale = 200.0 / (200.0 + (2.0 * margin));
+    const double halfHeight = (50.0 + (2.0 * margin)) * scale / 2.0;
+    QVERIFY(near(m.map({-margin, -margin}), {100.0, 200.0 + halfHeight}));
+    QVERIFY(near(m.map({200.0 + margin, 50.0 + margin}), {300.0, 200.0 - halfHeight}));
+}
+
+// A straight line has no height, but its ink has: a flat box limits the scale.
+void TestSignature::fitsAStraightLineAndItsInkThickness()
+{
+    const Signature sig = signature({stroke({{0.0, 7.0}, {50.0, 7.0}})});
+
+    const AffineMatrix m = fitted(sig, PdfRect{0.0, 0.0, 100.0, 2.0}, 2.0);
+
+    QVERIFY(near(m.map({25.0, 5.0}), {50.0, 2.0}));
+    QVERIFY(near(m.map({25.0, 9.0}), {50.0, 0.0}));
+    QCOMPARE(m.a, 0.5);
 }
 
 QTEST_APPLESS_MAIN(TestSignature)

@@ -1,6 +1,7 @@
 #include "domain/signature.h"
 
 #include <algorithm>
+#include <limits>
 #include <utility>
 
 namespace misign::domain {
@@ -30,7 +31,7 @@ std::optional<ScreenRect> Signature::boundingBox() const noexcept
     return box;
 }
 
-std::optional<AffineMatrix> Signature::fitInto(const PdfRect &box) const noexcept
+std::optional<AffineMatrix> Signature::fitInto(const PdfRect &box, double inkMargin) const noexcept
 {
     const std::optional<ScreenRect> bounds = boundingBox();
     if (!bounds || box.isEmpty()) {
@@ -38,13 +39,19 @@ std::optional<AffineMatrix> Signature::fitInto(const PdfRect &box) const noexcep
     }
     const double width = bounds->right - bounds->left;
     const double height = bounds->bottom - bounds->top;
+    // The ink's extent, which must fit: the points plus the margin on each
+    // side. Without a margin, a straight line fits along its length only.
+    const double inkWidth = width + (2.0 * inkMargin);
+    const double inkHeight = height + (2.0 * inkMargin);
     double scale = 1.0;
-    if (width > 0.0 && height > 0.0) {
-        scale = std::min(box.width() / width, box.height() / height);
-    } else if (width > 0.0) {
-        scale = box.width() / width;
-    } else if (height > 0.0) {
-        scale = box.height() / height;
+    if (width > 0.0 || height > 0.0) {
+        scale = std::numeric_limits<double>::infinity();
+        if (inkWidth > 0.0) {
+            scale = std::min(scale, box.width() / inkWidth);
+        }
+        if (inkHeight > 0.0) {
+            scale = std::min(scale, box.height() / inkHeight);
+        }
     }
 
     // Centre on centre, with y flipped: x' = boxX + (x - x0) s, y' = boxY - (y - y0) s.
