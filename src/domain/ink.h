@@ -9,7 +9,7 @@ namespace misign::domain {
 
 // Stroke width rules. Widths are in drawing-surface units, like the points:
 // once the signature is fitted into its box (Signature::fitInto), they scale
-// with it, so a signature keeps its proportions in any box (ADR 0010).
+// with it, so a signature keeps its proportions in any box.
 struct InkOptions {
     double minWidth = 1.0;
     double maxWidth = 4.5;
