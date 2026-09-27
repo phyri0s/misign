@@ -217,15 +217,16 @@ void TestSignature::leavesRoomForTheInk()
     const Signature sig = signature({stroke({{0.0, 0.0}, {200.0, 50.0}})});
     const double margin = InkOptions{}.maxWidth / 2.0;
 
-    const std::optional<AffineMatrix> m = sig.fitInto(PdfRect{100.0, 100.0, 300.0, 300.0});
+    // The default margin: no fitted() here, which passes its own.
+    const AffineMatrix m = sig.fitInto(PdfRect{100.0, 100.0, 300.0, 300.0})
+                               .value_or(AffineMatrix{0.0, 0.0, 0.0, 0.0, 0.0, 0.0});
 
     // The ink is (200 + 2 margin) wide: it spans the box's width, and its
     // height is centred on the box's centre, y = 200.
     const double scale = 200.0 / (200.0 + (2.0 * margin));
     const double halfHeight = (50.0 + (2.0 * margin)) * scale / 2.0;
-    QVERIFY(m.has_value());
-    QVERIFY(near(m->map({-margin, -margin}), {100.0, 200.0 + halfHeight}));
-    QVERIFY(near(m->map({200.0 + margin, 50.0 + margin}), {300.0, 200.0 - halfHeight}));
+    QVERIFY(near(m.map({-margin, -margin}), {100.0, 200.0 + halfHeight}));
+    QVERIFY(near(m.map({200.0 + margin, 50.0 + margin}), {300.0, 200.0 - halfHeight}));
 }
 
 // A straight line has no height, but its ink has: a flat box limits the scale.
