@@ -1,9 +1,4 @@
-# Port implementations (Qt PDF, PoDoFo, input, local files).
-add_library(misign_adapters STATIC
-    json_signature_store.cpp
-    json_signature_store.h
-)
-target_link_libraries(misign_adapters
-    PUBLIC misign_application Qt6::Core
-    PRIVATE misign_warnings
-)
+# Port implementations (Qt PDF, PoDoFo, input).
+# Becomes a static library with its first adapter.
+add_library(misign_adapters INTERFACE)
+target_link_libraries(misign_adapters INTERFACE misign_application)
