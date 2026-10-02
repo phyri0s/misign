@@ -15,7 +15,7 @@ Hexagonal architecture (ports and adapters):
 |---|---|---|
 | Domain | Pure rules, no external dependencies, unit tested | Bézier smoothing, width from pressure or speed, screen → PDF coordinate conversion |
 | Application | Use case orchestration | Open a document, place the signature box, sign, save a copy |
-| Ports | Interfaces to the outside world | `IPdfRenderer`, `IPdfWriter`, `IInputSource`, `ISignatureStore` |
+| Ports | Interfaces to the outside world | `IPdfRenderer`, `IPdfWriter`, `IInputSource` |
 | Adapters | Stack-specific implementations | PDF library, pointer API, file system |
 | UI | Display and interaction, no business logic | Screens, controls, shortcuts |
 
@@ -34,4 +34,4 @@ Strokes stay vector data end to end.
 
 - The domain depends on neither Qt nor any PDF library.
 - Switching PDF library means writing a new adapter.
-- A signature can be resampled to any box size, and later saved for reuse.
+- A signature can be resampled to any box size. It is not kept after signing (ADR 0011).
