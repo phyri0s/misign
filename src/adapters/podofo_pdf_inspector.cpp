@@ -15,8 +15,8 @@ namespace misign::adapters {
 namespace {
 
 using application::CertificationLevel;
+using application::DocumentError;
 using application::DocumentInfo;
-using application::InspectionError;
 using application::PageInfo;
 using domain::PdfRect;
 
@@ -179,18 +179,18 @@ std::optional<CertificationLevel> readCertification(const PoDoFo::PdfMemDocument
 // PoDoFo reports a file without a PDF header as InvalidPDF, and a wrong or
 // missing password as InvalidPassword. Any other failure while parsing means
 // the PDF structure cannot be read.
-InspectionError errorOf(PoDoFo::PdfErrorCode code)
+DocumentError errorOf(PoDoFo::PdfErrorCode code)
 {
     switch (code) {
     case PoDoFo::PdfErrorCode::FileNotFound:
     case PoDoFo::PdfErrorCode::IOError:
-        return InspectionError::Unreadable;
+        return DocumentError::Unreadable;
     case PoDoFo::PdfErrorCode::InvalidPDF:
-        return InspectionError::NotAPdf;
+        return DocumentError::NotAPdf;
     case PoDoFo::PdfErrorCode::InvalidPassword:
-        return InspectionError::PasswordProtected;
+        return DocumentError::PasswordProtected;
     default:
-        return InspectionError::Damaged;
+        return DocumentError::Damaged;
     }
 }
 
@@ -200,7 +200,7 @@ application::InspectionResult PodofoPdfInspector::inspect(const std::filesystem:
 {
     // Checked first: PoDoFo does not tell a missing file from a bad one reliably.
     if (!std::ifstream(file, std::ios::binary).good()) {
-        return InspectionError::Unreadable;
+        return DocumentError::Unreadable;
     }
     try {
         // PoDoFo takes UTF-8 file names on every platform.
@@ -221,7 +221,7 @@ application::InspectionResult PodofoPdfInspector::inspect(const std::filesystem:
     } catch (const std::exception &) {
         // Anything else, e.g. running out of memory on a huge or hostile file:
         // the port promises a result, not an exception.
-        return InspectionError::Damaged;
+        return DocumentError::Damaged;
     }
 }
 

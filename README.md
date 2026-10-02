@@ -83,6 +83,7 @@ cmake --build --preset debug
 ctest --preset debug              # all tests
 ctest --preset debug -L unit      # unit tests only
 ./build/debug/src/ui/misign       # run the application (build-container/ in the dev container)
+./build/debug/src/ui/misign tests/fixtures/pdf/mixed.pdf   # display a document
 ```
 
 Use the `release` preset for an optimized build. Pass `-DMISIGN_WARNINGS_AS_ERRORS=ON` to fail on compiler warnings, and `-DMISIGN_REQUIRE_TEST_TOOLS=ON` to fail the configuration when `qpdf` or Python 3 is missing instead of skipping their tests (CI sets both).

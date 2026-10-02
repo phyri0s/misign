@@ -25,7 +25,7 @@ include(MisignWarnings)
 include(MisignDependencyRules)
 include(MisignCoverage)
 
-set(MISIGN_QT_COMPONENTS Core Gui Qml Quick)
+set(MISIGN_QT_COMPONENTS Core Gui Pdf Qml Quick)
 if(MISIGN_BUILD_TESTS)
     list(APPEND MISIGN_QT_COMPONENTS Test)
 endif()
