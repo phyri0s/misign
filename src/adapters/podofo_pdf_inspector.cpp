@@ -1,9 +1,14 @@
 #include "adapters/podofo_pdf_inspector.h"
 
 #include <cstdint>
+#include <exception>
 #include <fstream>
+#include <limits>
+#include <optional>
 #include <podofo/podofo.h>
 #include <string>
+#include <string_view>
+#include <vector>
 
 namespace misign::adapters {
 
@@ -20,6 +25,19 @@ PdfRect asWritten(const PoDoFo::Corners &corners)
     return {corners.X1, corners.Y1, corners.X2, corners.Y2};
 }
 
+// What `read` returns, or nothing when PoDoFo cannot read it. One malformed
+// entry, such as a box that is not four numbers, must not make the whole
+// document unreadable: viewers display such files.
+template<typename Read>
+auto readOrNothing(Read read) -> std::optional<decltype(read())>
+{
+    try {
+        return read();
+    } catch (const PoDoFo::PdfError &) {
+        return std::nullopt;
+    }
+}
+
 // PoDoFo's GetCropBoxRaw gives the MediaBox when there is no CropBox, so
 // whether one is set, on the page or in the page tree, is read here.
 bool hasCropBox(const PoDoFo::PdfPage &page)
@@ -28,38 +46,18 @@ bool hasCropBox(const PoDoFo::PdfPage &page)
     return box != nullptr && box->IsArray();
 }
 
-bool isSignatureWidget(const PoDoFo::PdfAnnotation &annotation)
+// /Rotate as written. A value that does not fit an int is read as 0.
+int readRotate(const PoDoFo::PdfPage &page)
 {
-    if (annotation.GetType() != PoDoFo::PdfAnnotationType::Widget) {
-        return false;
-    }
-    // The field type may sit on a parent field, which FindKeyParent follows.
-    const PoDoFo::PdfObject *type = annotation.GetDictionary().FindKeyParent("FT");
-    const PoDoFo::PdfName *name = nullptr;
-    return type != nullptr && type->TryGetName(name) && *name == "Sig";
-}
-
-PageInfo readPage(const PoDoFo::PdfPage &page)
-{
-    PageInfo info;
-    info.mediaBox = asWritten(page.GetMediaBoxRaw());
-    if (hasCropBox(page)) {
-        info.cropBox = asWritten(page.GetCropBoxRaw());
-    }
     double rotate = 0.0;
     page.TryGetRotationRaw(rotate);
-    info.rotate = static_cast<int>(rotate);
-
-    const PoDoFo::PdfAnnotationCollection &annotations = page.GetAnnotations();
-    for (unsigned index = 0; index < annotations.GetCount(); ++index) {
-        const PoDoFo::PdfAnnotation &annotation = annotations.GetAnnotAt(index);
-        if (isSignatureWidget(annotation)) {
-            const PoDoFo::Corners rect = annotation.GetRectRaw();
-            info.signatureWidgets.push_back(
-                PdfRect::fromCorners({rect.X1, rect.Y1}, {rect.X2, rect.Y2}));
-        }
+    // The upper bound is exclusive: it is the first double above every int.
+    constexpr double kLimit = 2147483648.0;
+    static_assert(std::numeric_limits<int>::max() == 2147483647);
+    if (rotate > -kLimit && rotate < kLimit) {
+        return static_cast<int>(rotate);
     }
-    return info;
+    return 0;
 }
 
 const PoDoFo::PdfDictionary *findDictionary(const PoDoFo::PdfDictionary &parent,
@@ -71,6 +69,72 @@ const PoDoFo::PdfDictionary *findDictionary(const PoDoFo::PdfDictionary &parent,
         return nullptr;
     }
     return dictionary;
+}
+
+bool hasName(const PoDoFo::PdfObject *object, std::string_view expected)
+{
+    const PoDoFo::PdfName *name = nullptr;
+    return object != nullptr && object->TryGetName(name) && *name == expected;
+}
+
+// The /Rect of the annotation when it is the widget of a signature field.
+// The field type may sit on a parent field, which FindKeyParent follows.
+std::optional<PdfRect> signatureWidgetRect(const PoDoFo::PdfDictionary &annotation)
+{
+    if (!hasName(annotation.FindKey("Subtype"), "Widget") ||
+        !hasName(annotation.FindKeyParent("FT"), "Sig")) {
+        return std::nullopt;
+    }
+    const PoDoFo::PdfObject *rect = annotation.FindKey("Rect");
+    const PoDoFo::PdfArray *array = nullptr;
+    if (rect == nullptr || !rect->TryGetArray(array)) {
+        return std::nullopt;
+    }
+    const PoDoFo::Corners corners = PoDoFo::Corners::FromArray(*array);
+    return PdfRect::fromCorners({corners.X1, corners.Y1}, {corners.X2, corners.Y2});
+}
+
+// Read from the /Annots array itself: PoDoFo's annotation objects throw for
+// every entry they cannot model (no /Subtype, an unknown one, a null), which
+// has nothing to do with signatures. A signature widget that cannot be read,
+// e.g. without a /Rect, is left out.
+std::vector<PdfRect> readSignatureWidgets(const PoDoFo::PdfPage &page)
+{
+    std::vector<PdfRect> widgets;
+    const PoDoFo::PdfObject *annotations = page.GetDictionary().FindKey("Annots");
+    const PoDoFo::PdfArray *array = nullptr;
+    if (annotations == nullptr || !annotations->TryGetArray(array)) {
+        return widgets;
+    }
+    for (unsigned index = 0; index < array->GetSize(); ++index) {
+        const std::optional<std::optional<PdfRect>> rect =
+            readOrNothing([&]() -> std::optional<PdfRect> {
+                const PoDoFo::PdfObject *entry = array->FindAt(index);
+                const PoDoFo::PdfDictionary *annotation = nullptr;
+                if (entry == nullptr || !entry->TryGetDictionary(annotation)) {
+                    return std::nullopt;
+                }
+                return signatureWidgetRect(*annotation);
+            });
+        if (rect && *rect) {
+            widgets.push_back(**rect);
+        }
+    }
+    return widgets;
+}
+
+PageInfo readPage(const PoDoFo::PdfPage &page)
+{
+    PageInfo info;
+    // Cannot throw here: PoDoFo already read the MediaBox to build the page,
+    // and a document whose MediaBox is not four numbers fails in GetPageAt.
+    info.mediaBox = asWritten(page.GetMediaBoxRaw());
+    if (hasCropBox(page)) {
+        info.cropBox = readOrNothing([&] { return asWritten(page.GetCropBoxRaw()); });
+    }
+    info.rotate = readRotate(page);
+    info.signatureWidgets = readSignatureWidgets(page);
+    return info;
 }
 
 // The /P of the DocMDP transform parameters of the certification signature
@@ -154,6 +218,10 @@ application::InspectionResult PodofoPdfInspector::inspect(const std::filesystem:
         return info;
     } catch (const PoDoFo::PdfError &error) {
         return errorOf(error.GetCode());
+    } catch (const std::exception &) {
+        // Anything else, e.g. running out of memory on a huge or hostile file:
+        // the port promises a result, not an exception.
+        return InspectionError::Damaged;
     }
 }
 

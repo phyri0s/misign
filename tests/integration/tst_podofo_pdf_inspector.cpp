@@ -28,23 +28,23 @@ namespace {
 
 constexpr double kTolerance = 1e-6;
 
-bool near(double actual, double expected)
+bool isNear(double actual, double expected)
 {
     return std::abs(actual - expected) < kTolerance;
 }
 
-bool near(const PdfRect &actual, const PdfRect &expected)
+bool isNear(const PdfRect &actual, const PdfRect &expected)
 {
-    return near(actual.left, expected.left) && near(actual.bottom, expected.bottom) &&
-           near(actual.right, expected.right) && near(actual.top, expected.top);
+    return isNear(actual.left, expected.left) && isNear(actual.bottom, expected.bottom) &&
+           isNear(actual.right, expected.right) && isNear(actual.top, expected.top);
 }
 
-bool near(const std::optional<PdfRect> &actual, const std::optional<PdfRect> &expected)
+bool isNear(const std::optional<PdfRect> &actual, const std::optional<PdfRect> &expected)
 {
     if (!actual || !expected) {
         return actual.has_value() == expected.has_value();
     }
-    return near(*actual, *expected);
+    return isNear(*actual, *expected);
 }
 
 PdfRect rectFromJson(const QJsonArray &values)
@@ -78,7 +78,7 @@ ExpectedPage expectedFromManifest(const QJsonObject &page)
 
 bool matches(const PageInfo &page, const ExpectedPage &expected)
 {
-    return near(page.mediaBox, expected.mediaBox) && near(page.cropBox, expected.cropBox) &&
+    return isNear(page.mediaBox, expected.mediaBox) && isNear(page.cropBox, expected.cropBox) &&
            page.rotate == expected.rotate;
 }
 
@@ -86,8 +86,8 @@ bool matches(const PageInfo &page, const ExpectedPage &expected)
 bool hasDisplayedSize(const PageInfo &page, const QJsonArray &size)
 {
     const PageGeometry geometry = page.geometry();
-    return near(geometry.displayedWidth(), size.at(0).toDouble()) &&
-           near(geometry.displayedHeight(), size.at(1).toDouble());
+    return isNear(geometry.displayedWidth(), size.at(0).toDouble()) &&
+           isNear(geometry.displayedHeight(), size.at(1).toDouble());
 }
 
 // The number, from 1, of the first page whose boxes, /Rotate or displayed size
@@ -118,6 +118,43 @@ std::vector<PdfRect> signatureWidgets(const DocumentInfo &document)
         widgets.insert(widgets.end(), page.signatureWidgets.begin(), page.signatureWidgets.end());
     }
     return widgets;
+}
+
+// A one-page PDF written by hand, for the malformed pages no fixture has:
+// the corpus only holds files that pass `qpdf --check`. `pageEntries` goes
+// into the page dictionary, and `extraObjects` are numbered from 4.
+QByteArray onePagePdf(const QByteArray &pageEntries, const QList<QByteArray> &extraObjects)
+{
+    QList<QByteArray> objects{
+        "<< /Type /Catalog /Pages 2 0 R >>",
+        "<< /Type /Pages /Kids [3 0 R] /Count 1 >>",
+        "<< /Type /Page /Parent 2 0 R " + pageEntries + " >>",
+    };
+    objects += extraObjects;
+
+    QByteArray pdf = "%PDF-1.7\n";
+    QByteArray xref =
+        "xref\n0 " + QByteArray::number(objects.size() + 1) + "\n0000000000 65535 f \n";
+    for (qsizetype index = 0; index < objects.size(); ++index) {
+        xref += QByteArray::number(pdf.size()).rightJustified(10, '0') + " 00000 n \n";
+        pdf += QByteArray::number(index + 1) + " 0 obj\n" + objects.at(index) + "\nendobj\n";
+    }
+    const qsizetype xrefOffset = pdf.size();
+    pdf += xref + "trailer\n<< /Size " + QByteArray::number(objects.size() + 1) +
+           " /Root 1 0 R >>\nstartxref\n" + QByteArray::number(xrefOffset) + "\n%%EOF\n";
+    return pdf;
+}
+
+// Writes onePagePdf() into `directory` and returns its path, empty on failure.
+QString writeOnePagePdf(const QTemporaryDir &directory, const QByteArray &pageEntries,
+                        const QList<QByteArray> &extraObjects)
+{
+    QFile file(directory.filePath(QStringLiteral("page.pdf")));
+    const QByteArray pdf = onePagePdf(pageEntries, extraObjects);
+    if (!directory.isValid() || !file.open(QIODevice::WriteOnly) || file.write(pdf) != pdf.size()) {
+        return {};
+    }
+    return file.fileName();
 }
 
 QByteArray pageLabel(qsizetype index)
@@ -178,6 +215,9 @@ private slots:
     void findsSignatureWidgets();
     void leavesTheFileUntouched();
     void readsAFileWithANonAsciiName();
+    void readsAroundMalformedPageEntries_data();
+    void readsAroundMalformedPageEntries();
+    void reportsAPageWhoseMediaBoxCannotBeRead();
     void reportsAMissingFile();
     void reportsAFileThatIsNotAPdf();
     void reportsATruncatedPdf();
@@ -303,7 +343,7 @@ void TestPodofoPdfInspector::findsSignatureWidgets()
     const std::vector<PdfRect> widgets = signatureWidgets(*document);
     QCOMPARE(widgets.size(), std::size_t{signedFile ? 1U : 0U});
     if (signedFile) {
-        QVERIFY(near(widgets.front(), kSignatureWidget));
+        QVERIFY(isNear(widgets.front(), kSignatureWidget));
     }
 }
 
@@ -337,6 +377,118 @@ void TestPodofoPdfInspector::readsAFileWithANonAsciiName()
     const auto *document = std::get_if<DocumentInfo>(&result);
     QVERIFY(document != nullptr);
     QCOMPARE(document->pages.size(), std::size_t{1});
+}
+
+void TestPodofoPdfInspector::readsAroundMalformedPageEntries_data()
+{
+    QTest::addColumn<QByteArray>("pageEntries");
+    QTest::addColumn<QList<QByteArray>>("extraObjects");
+    QTest::addColumn<bool>("hasMediaBox");
+    QTest::addColumn<bool>("hasCropBox");
+    QTest::addColumn<int>("rotate");
+    QTest::addColumn<int>("widgets");
+
+    const QByteArray boxes = "/MediaBox [0 0 200 300] ";
+    // A readable signature widget, which must be found whatever sits next to it.
+    const QByteArray widget = "<< /Type /Annot /Subtype /Widget /FT /Sig /T (Signature1) "
+                              "/Rect [60 60 160 100] >>";
+    using Objects = QList<QByteArray>;
+
+    QTest::newRow("well formed") << boxes + "/Annots [4 0 R]" << Objects{widget} << true << false
+                                 << 0 << 1;
+    QTest::newRow("annotation without /Subtype")
+        << boxes + "/Annots [4 0 R 5 0 R]" << Objects{"<< /Rect [1 2 3 4] >>", widget} << true
+        << false << 0 << 1;
+    QTest::newRow("annotation with an unknown /Subtype")
+        << boxes + "/Annots [4 0 R 5 0 R]"
+        << Objects{"<< /Type /Annot /Subtype /Misign /Rect [1 2 3 4] >>", widget} << true << false
+        << 0 << 1;
+    QTest::newRow("null entry in /Annots")
+        << boxes + "/Annots [null 4 0 R]" << Objects{widget} << true << false << 0 << 1;
+    QTest::newRow("entry of /Annots pointing nowhere")
+        << boxes + "/Annots [9 0 R 4 0 R]" << Objects{widget} << true << false << 0 << 1;
+    QTest::newRow("/Annots that is not an array")
+        << boxes + "/Annots 12" << Objects{} << true << false << 0 << 0;
+    QTest::newRow("signature widget without /Rect")
+        << boxes + "/Annots [4 0 R 5 0 R]"
+        << Objects{"<< /Type /Annot /Subtype /Widget /FT /Sig /T (NoRect) >>", widget} << true
+        << false << 0 << 1;
+    QTest::newRow("signature widget with a /Rect of 3 numbers")
+        << boxes + "/Annots [4 0 R 5 0 R]"
+        << Objects{"<< /Type /Annot /Subtype /Widget /FT /Sig /T (Short) /Rect [1 2 3] >>", widget}
+        << true << false << 0 << 1;
+    QTest::newRow("widget whose /Parent chain loops")
+        << boxes + "/Annots [4 0 R 6 0 R]"
+        << Objects{"<< /Type /Annot /Subtype /Widget /Parent 5 0 R /Rect [1 2 3 4] >>",
+                   "<< /Parent 4 0 R >>", widget}
+        << true << false << 0 << 1;
+    QTest::newRow("/FT on the parent field")
+        << boxes + "/Annots [4 0 R]"
+        << Objects{"<< /Type /Annot /Subtype /Widget /Parent 5 0 R /Rect [60 60 160 100] >>",
+                   "<< /FT /Sig /T (Signature1) /Kids [4 0 R] >>"}
+        << true << false << 0 << 1;
+    QTest::newRow("text field widget")
+        << boxes + "/Annots [4 0 R]"
+        << Objects{"<< /Type /Annot /Subtype /Widget /FT /Tx /T (Name) /Rect [1 2 3 4] >>"} << true
+        << false << 0 << 0;
+    QTest::newRow("/CropBox of 3 numbers")
+        << boxes + "/CropBox [0 0 100]" << Objects{} << true << false << 0 << 0;
+    QTest::newRow("no /MediaBox") << QByteArray() << Objects{} << false << false << 0 << 0;
+    QTest::newRow("/Rotate above the range of int")
+        << boxes + "/Rotate 9999999999" << Objects{} << true << false << 0 << 0;
+    QTest::newRow("/Rotate below the range of int")
+        << boxes + "/Rotate -9999999999" << Objects{} << true << false << 0 << 0;
+    QTest::newRow("/Rotate that is not a number")
+        << boxes + "/Rotate /Sideways" << Objects{} << true << false << 0 << 0;
+    QTest::newRow("/Rotate with a fraction")
+        << boxes + "/Rotate 90.7 /CropBox [10 20 110 120]" << Objects{} << true << true << 90 << 0;
+}
+
+// A page entry PoDoFo cannot read is read as absent, and the rest of the
+// document still comes out: a viewer displays these files.
+void TestPodofoPdfInspector::readsAroundMalformedPageEntries()
+{
+    QFETCH(QByteArray, pageEntries);
+    QFETCH(QList<QByteArray>, extraObjects);
+    QFETCH(bool, hasMediaBox);
+    QFETCH(bool, hasCropBox);
+    QFETCH(int, rotate);
+    QFETCH(int, widgets);
+    const QTemporaryDir directory;
+    const QString file = writeOnePagePdf(directory, pageEntries, extraObjects);
+    QVERIFY(!file.isEmpty());
+
+    const InspectionResult result = inspect(file);
+
+    const auto *document = std::get_if<DocumentInfo>(&result);
+    QVERIFY(document != nullptr);
+    QCOMPARE(document->pages.size(), std::size_t{1});
+    const ExpectedPage expected{
+        hasMediaBox ? PdfRect{0.0, 0.0, 200.0, 300.0} : PdfRect{},
+        hasCropBox ? std::optional<PdfRect>(PdfRect{10.0, 20.0, 110.0, 120.0}) : std::nullopt,
+        rotate,
+    };
+    QVERIFY(matches(document->pages.front(), expected));
+    const std::vector<PdfRect> found = signatureWidgets(*document);
+    QCOMPARE(static_cast<int>(found.size()), widgets);
+    if (widgets > 0) {
+        QVERIFY(isNear(found.front(), (PdfRect{60.0, 60.0, 160.0, 100.0})));
+    }
+}
+
+// The one malformed entry that is not read around: PoDoFo needs the MediaBox
+// to build the page at all.
+void TestPodofoPdfInspector::reportsAPageWhoseMediaBoxCannotBeRead()
+{
+    const QTemporaryDir directory;
+    const QString file = writeOnePagePdf(directory, "/MediaBox [0 0 200]", {});
+    QVERIFY(!file.isEmpty());
+
+    const InspectionResult result = inspect(file);
+
+    const auto *error = std::get_if<InspectionError>(&result);
+    QVERIFY(error != nullptr);
+    QCOMPARE(*error, InspectionError::Damaged);
 }
 
 void TestPodofoPdfInspector::reportsAMissingFile()

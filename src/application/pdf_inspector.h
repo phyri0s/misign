@@ -15,12 +15,15 @@ namespace misign::application {
 struct PageInfo {
     // Corners as written, in any order. Empty when the page has no MediaBox.
     domain::PdfRect mediaBox{};
-    // Absent when neither the page nor the page tree sets a CropBox.
+    // Absent when neither the page nor the page tree sets a CropBox, or when
+    // it is not four numbers.
     std::optional<domain::PdfRect> cropBox;
-    // /Rotate in degrees as written, e.g. -90 or 450; 0 when absent.
+    // /Rotate in degrees as written, e.g. -90 or 450; 0 when absent or too
+    // large for an int.
     int rotate = 0;
     // Rectangles of the signature field widgets on this page, signed or not,
-    // normalized. An invisible signature has an empty rectangle.
+    // normalized. An invisible signature has an empty rectangle; a widget
+    // whose /Rect cannot be read is left out.
     std::vector<domain::PdfRect> signatureWidgets;
 
     // The page as a viewer displays it.
@@ -57,7 +60,9 @@ enum class InspectionError : std::uint8_t {
 using InspectionResult = std::variant<DocumentInfo, InspectionError>;
 
 // Reads what placement and saving depend on and Qt PDF does not expose. The
-// file is only read, never modified.
+// file is only read, never modified. A page entry that cannot be read does
+// not fail the document: it is read as absent. The exception is a MediaBox
+// that is not four numbers, which makes the document Damaged. Never throws.
 class IPdfInspector {
 public:
     IPdfInspector() = default;
