@@ -23,7 +23,7 @@ Findings, each labelled as observed or read:
 
 ## Decision
 
-Ignore `UserUnit`. Misign works in user-space units from end to end, and the PDF adapter neither reads nor writes `/UserUnit`. A saved signature looks the way it did in Misign relative to the page, in every reader, whether it honours `UserUnit` or not.
+Ignore `UserUnit`. Misign works in user-space units from end to end, and the PDF adapter neither reads nor writes `/UserUnit`. A written signature looks the way it did in Misign relative to the page, in every reader, whether it honours `UserUnit` or not.
 
 ## Consequences
 
