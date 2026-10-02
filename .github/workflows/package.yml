@@ -45,10 +45,7 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
-      # Nothing links PoDoFo yet: it joins the packages with the PoDoFo adapter.
       - uses: ./.github/actions/setup-build-deps
-        with:
-          podofo: "false"
 
       - name: Build
         env:
@@ -74,7 +71,7 @@ jobs:
           PATH="$tools:$PATH" \
           APPIMAGE_EXTRACT_AND_RUN=1 \
           QMAKE="$qt_prefix/bin/qmake" \
-          LD_LIBRARY_PATH="$qt_prefix/lib" \
+          LD_LIBRARY_PATH="$qt_prefix/lib:$HOME/podofo/lib" \
           QML_SOURCES_PATHS="$PWD/src/ui" \
           LDAI_OUTPUT="dist/Misign-$version-linux-x86_64.AppImage" \
             linuxdeploy --appdir "$RUNNER_TEMP/AppDir" --plugin qt --output appimage
@@ -89,7 +86,15 @@ jobs:
   windows:
     name: Windows installer
     runs-on: windows-2022
-    timeout-minutes: 45
+    # Long enough to build PoDoFo and its dependencies when they are not cached.
+    timeout-minutes: 90
+    env:
+      # PoDoFo comes from vcpkg (ADR 0008), at a pinned commit of its registry
+      # (PoDoFo 1.1.1). Static libraries on the dynamic MSVC runtime Qt uses, so
+      # PoDoFo ends up inside misign.exe and the installer ships no extra DLL.
+      VCPKG_COMMIT: f05ff9f0adbd630c4fada9072b4a68eeeb7d738a
+      VCPKG_TRIPLET: x64-windows-static-md
+      VCPKG_DEFAULT_BINARY_CACHE: ${{ github.workspace }}\.vcpkg-cache
     # PowerShell rather than Git Bash, whose GNU `link` can shadow MSVC's link.exe.
     defaults:
       run:
@@ -117,6 +122,28 @@ jobs:
           $prefix = python scripts/install_qt.py --arch win64_msvc2022_64 --output-dir C:\Qt --print-prefix
           "CMAKE_PREFIX_PATH=$prefix" >> $env:GITHUB_ENV
 
+      - name: Restore PoDoFo
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: .vcpkg-cache
+          key: vcpkg-${{ runner.os }}-${{ env.VCPKG_TRIPLET }}-${{ env.VCPKG_COMMIT }}
+
+      # The runner ships vcpkg; move it to the pinned commit. Packages built
+      # before are taken from the binary cache restored above.
+      - name: Install PoDoFo
+        run: |
+          New-Item -ItemType Directory -Force $env:VCPKG_DEFAULT_BINARY_CACHE | Out-Null
+          git -C $env:VCPKG_INSTALLATION_ROOT fetch --quiet origin $env:VCPKG_COMMIT
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          git -C $env:VCPKG_INSTALLATION_ROOT checkout --quiet --force $env:VCPKG_COMMIT
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & "$env:VCPKG_INSTALLATION_ROOT\bootstrap-vcpkg.bat" -disableMetrics
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & "$env:VCPKG_INSTALLATION_ROOT\vcpkg.exe" install "podofo:$env:VCPKG_TRIPLET" --clean-after-build
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $toolchain = "$env:VCPKG_INSTALLATION_ROOT/scripts/buildsystems/vcpkg.cmake" -replace '\\', '/'
+          "VCPKG_TOOLCHAIN=$toolchain" >> $env:GITHUB_ENV
+
       # MSVC compiler, and the CMake and Ninja that ship with Visual Studio.
       - uses: ilammy/msvc-dev-cmd@0b201ec74fa43914dc39ae48a89fd1d8cb592756 # v1.13.0
         with:
@@ -124,7 +151,9 @@ jobs:
 
       - name: Build
         run: |
-          cmake --preset release -DMISIGN_BUILD_TESTS=OFF "-DMISIGN_VERSION_SUFFIX=$env:VERSION_SUFFIX"
+          cmake --preset release -DMISIGN_BUILD_TESTS=OFF "-DMISIGN_VERSION_SUFFIX=$env:VERSION_SUFFIX" `
+            "-DCMAKE_TOOLCHAIN_FILE=$env:VCPKG_TOOLCHAIN" "-DVCPKG_TARGET_TRIPLET=$env:VCPKG_TRIPLET" `
+            -DVCPKG_APPLOCAL_DEPS=OFF
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           cmake --build --preset release
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
