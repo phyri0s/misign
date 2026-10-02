@@ -1,5 +1,6 @@
 #pragma once
 
+#include "application/document_error.h"
 #include "domain/page_geometry.h"
 
 #include <cstdint>
@@ -47,17 +48,7 @@ struct DocumentInfo {
     std::optional<CertificationLevel> certification;
 };
 
-// Why a document could not be inspected.
-enum class InspectionError : std::uint8_t {
-    // The file does not exist or cannot be read.
-    Unreadable,
-    NotAPdf,
-    // A PDF whose structure cannot be read, e.g. a truncated file.
-    Damaged,
-    PasswordProtected,
-};
-
-using InspectionResult = std::variant<DocumentInfo, InspectionError>;
+using InspectionResult = std::variant<DocumentInfo, DocumentError>;
 
 // Reads what placement and saving depend on and Qt PDF does not expose. The
 // file is only read, never modified. A page entry that cannot be read does

@@ -1,11 +1,28 @@
 qt_add_executable(misign
     main.cpp
 )
+target_include_directories(misign PRIVATE "${PROJECT_SOURCE_DIR}/src")
+
+# The QML module, also built into tests/integration/tst_page_view, which
+# displays the real view: the lists are shared through these properties.
+set(ui_qml_files
+    Main.qml
+    PageView.qml
+)
+set(ui_sources
+    document_model.cpp
+    document_model.h
+    page_image_provider.cpp
+    page_image_provider.h
+)
+set_property(GLOBAL PROPERTY MISIGN_UI_QML_FILES ${ui_qml_files})
+set_property(GLOBAL PROPERTY MISIGN_UI_SOURCES ${ui_sources})
 
 qt_add_qml_module(misign
     URI Misign
     VERSION 1.0
-    QML_FILES Main.qml
+    QML_FILES ${ui_qml_files}
+    SOURCES ${ui_sources}
 )
 
 target_link_libraries(misign PRIVATE

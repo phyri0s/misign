@@ -17,8 +17,8 @@
 #include <vector>
 
 using misign::adapters::PodofoPdfInspector;
+using misign::application::DocumentError;
 using misign::application::DocumentInfo;
-using misign::application::InspectionError;
 using misign::application::InspectionResult;
 using misign::application::PageInfo;
 using misign::domain::PageGeometry;
@@ -486,9 +486,9 @@ void TestPodofoPdfInspector::reportsAPageWhoseMediaBoxCannotBeRead()
 
     const InspectionResult result = inspect(file);
 
-    const auto *error = std::get_if<InspectionError>(&result);
+    const auto *error = std::get_if<DocumentError>(&result);
     QVERIFY(error != nullptr);
-    QCOMPARE(*error, InspectionError::Damaged);
+    QCOMPARE(*error, DocumentError::Damaged);
 }
 
 void TestPodofoPdfInspector::reportsAMissingFile()
@@ -498,18 +498,18 @@ void TestPodofoPdfInspector::reportsAMissingFile()
 
     const InspectionResult result = inspect(directory.filePath(QStringLiteral("missing.pdf")));
 
-    const auto *error = std::get_if<InspectionError>(&result);
+    const auto *error = std::get_if<DocumentError>(&result);
     QVERIFY(error != nullptr);
-    QCOMPARE(*error, InspectionError::Unreadable);
+    QCOMPARE(*error, DocumentError::Unreadable);
 }
 
 void TestPodofoPdfInspector::reportsAFileThatIsNotAPdf()
 {
     const InspectionResult result = inspect(fixture(QStringLiteral("manifest.json")));
 
-    const auto *error = std::get_if<InspectionError>(&result);
+    const auto *error = std::get_if<DocumentError>(&result);
     QVERIFY(error != nullptr);
-    QCOMPARE(*error, InspectionError::NotAPdf);
+    QCOMPARE(*error, DocumentError::NotAPdf);
 }
 
 void TestPodofoPdfInspector::reportsATruncatedPdf()
@@ -526,9 +526,9 @@ void TestPodofoPdfInspector::reportsATruncatedPdf()
 
     const InspectionResult result = inspect(truncated.fileName());
 
-    const auto *error = std::get_if<InspectionError>(&result);
+    const auto *error = std::get_if<DocumentError>(&result);
     QVERIFY(error != nullptr);
-    QCOMPARE(*error, InspectionError::Damaged);
+    QCOMPARE(*error, DocumentError::Damaged);
 }
 
 // The corpus has no encrypted file: one is written here with PoDoFo.
@@ -546,9 +546,9 @@ void TestPodofoPdfInspector::reportsAPasswordProtectedPdf()
 
     const InspectionResult result = inspect(file);
 
-    const auto *error = std::get_if<InspectionError>(&result);
+    const auto *error = std::get_if<DocumentError>(&result);
     QVERIFY(error != nullptr);
-    QCOMPARE(*error, InspectionError::PasswordProtected);
+    QCOMPARE(*error, DocumentError::PasswordProtected);
 }
 
 QTEST_APPLESS_MAIN(TestPodofoPdfInspector)

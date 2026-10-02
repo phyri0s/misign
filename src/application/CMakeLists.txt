@@ -1,4 +1,4 @@
 # Use cases and ports. Becomes a static library with its first use case; the
-# ports are headers only (pdf_inspector.h).
+# ports are headers only (pdf_inspector.h, pdf_renderer.h).
 add_library(misign_application INTERFACE)
 target_link_libraries(misign_application INTERFACE misign_domain)
