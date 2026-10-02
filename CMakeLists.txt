@@ -32,6 +32,9 @@ endif()
 find_package(Qt6 6.11 REQUIRED COMPONENTS ${MISIGN_QT_COMPONENTS})
 qt_standard_project_setup(REQUIRES 6.11)
 
+# Incremental updates need PoDoFo 1.1 or later (ADR 0005).
+find_package(podofo 1.1 REQUIRED)
+
 add_subdirectory(src)
 
 if(MISIGN_BUILD_TESTS)

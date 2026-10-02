@@ -45,7 +45,7 @@ The application window is displayed through X11: WSLg on Windows, the host X ser
 
 ### On the host
 
-Requirements: CMake 3.25+, Ninja, a C++20 compiler and Qt 6.11 with Qt PDF. Install Qt with the project script, which pins the version used everywhere (see [ADR 0006](docs/adr/0006-qt-version.md)):
+Requirements: CMake 3.25+, Ninja, a C++20 compiler, Qt 6.11 with Qt PDF, and PoDoFo 1.1+. Install Qt with the project script, which pins the version used everywhere (see [ADR 0006](docs/adr/0006-qt-version.md)):
 
 ```sh
 python3 -m venv ~/.venvs/aqt && ~/.venvs/aqt/bin/pip install aqtinstall
@@ -61,6 +61,19 @@ On Linux, Qt also needs the OpenGL and XCB system libraries. On Ubuntu:
 sudo apt install libgl-dev libegl-dev libxkbcommon-dev libxkbcommon-x11-0 libxcb-cursor0 \
   libxcb-icccm4 libxcb-image0 libxcb-keysyms1 libxcb-randr0 libxcb-render-util0 libxcb-shape0 libxcb-xkb1
 ```
+
+Misign also links PoDoFo 1.1 or later (see [ADR 0005](docs/adr/0005-pdf-libraries.md)). Ubuntu 24.04 only ships 0.9.8, so build it from source and add its prefix to `CMAKE_PREFIX_PATH`:
+
+```sh
+sudo apt install libfreetype-dev libssl-dev libxml2-dev zlib1g-dev libfontconfig-dev libjpeg-dev libpng-dev libtiff-dev
+git clone --depth 1 --branch 1.1.2 https://github.com/podofo/podofo.git
+cmake -S podofo -B podofo/build -G Ninja -DCMAKE_BUILD_TYPE=Release -DPODOFO_BUILD_LIB_ONLY=ON -DCMAKE_INSTALL_PREFIX=$HOME/podofo
+cmake --build podofo/build && cmake --install podofo/build
+export CMAKE_PREFIX_PATH=~/Qt/6.11.3/gcc_64:~/podofo
+export LD_LIBRARY_PATH=~/podofo/lib
+```
+
+On Windows, install it with vcpkg (`vcpkg install podofo:x64-windows-static-md`) and configure with vcpkg's toolchain file, as `.github/workflows/package.yml` does.
 
 ### Build and test
 
