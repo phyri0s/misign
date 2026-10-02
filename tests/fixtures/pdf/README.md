@@ -41,13 +41,13 @@ These labels and `manifest.json` give the expected results for screen → PDF co
 
 `manifest.json` lists, for every page:
 
-- `media_box`, `crop_box` and `rotate`: the values as written in the file, once page tree inheritance is resolved, which is what the PoDoFo adapter must read. `crop_box` is `null` when the page has none;
+- `media_box`, `crop_box` and `rotate`: the values as written in the file, once page tree inheritance is resolved, which is what the PoDoFo adapter reads. `crop_box` is `null` when the page has none. For `pdfa-2b-a4.pdf` they are the values Ghostscript wrote, rounded to two decimals (a `MediaBox` 595.28 wide), while the text printed on the page still shows the 595.276 of its source;
 - `user_unit`: `/UserUnit`, 1 when absent;
 - `inherited`: the attributes taken from the page tree, e.g. `["MediaBox", "Rotate"]`;
 - `visible_box`: the area a viewer shows, as PDFium computes it (the `CropBox` clipped to the `MediaBox`, with its fallbacks for empty boxes), or `null` when nothing is visible;
 - `displayed_size` and `displayed_corners_in_user_space`: the page as displayed, turned by `/Rotate` as PDFium reads it, in user-space units. Pages with nothing visible have a 0 × 0 size and no corners.
 
-The `tst_page_geometry` unit test builds every page from `media_box`, `crop_box` and `rotate`, and checks the other values.
+The `tst_page_geometry` unit test builds every page from `media_box`, `crop_box` and `rotate`, and checks the other values. The `tst_podofo_pdf_inspector` integration test reads every file with the PoDoFo adapter and checks `media_box`, `crop_box`, `rotate` and the displayed size against the manifest.
 
 ### Observed with Qt PDF 6.11
 

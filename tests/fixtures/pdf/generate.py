@@ -536,12 +536,17 @@ def signed(cert_name: str, certify: int | None = None):
     return lambda src, dst, out_dir: write_signed(src, dst, out_dir / cert_name, certify)
 
 
+# Ghostscript rewrites the page boxes with two decimals: the PDF/A file says
+# 595.28 where its source says 595.276, and the manifest lists what the file says.
+A4_AS_GHOSTSCRIPT_WRITES_IT = (595.28, 841.89)
+
 # A4 portrait pages turned into other files by external tools: (file, needs
-# pyHanko, producer). Each certified file has its own certificate.
+# pyHanko, producer, page size as written in the result). Each certified file
+# has its own certificate.
 DERIVED_FIXTURES = [
-    ("signed-a4.pdf", True, signed("signed-a4.cert.pem")),
-    *((f"certified-p{p}-a4.pdf", True, signed(f"certified-p{p}-a4.cert.pem", certify=p)) for p in (1, 2, 3)),
-    ("pdfa-2b-a4.pdf", False, lambda src, dst, _: write_pdfa(src, dst)),
+    ("signed-a4.pdf", True, signed("signed-a4.cert.pem"), A4),
+    *((f"certified-p{p}-a4.pdf", True, signed(f"certified-p{p}-a4.cert.pem", certify=p), A4) for p in (1, 2, 3)),
+    ("pdfa-2b-a4.pdf", False, lambda src, dst, _: write_pdfa(src, dst), A4_AS_GHOSTSCRIPT_WRITES_IT),
 ]
 
 
@@ -552,8 +557,8 @@ def generate(out_dir: Path, skip_signed: bool, skip_pdfa: bool) -> None:
         manifest[name] = manifest_entry(tree)
 
     base = flat(portrait(A4))
-    for name, needs_pyhanko, produce in DERIVED_FIXTURES:
-        manifest[name] = manifest_entry(base)
+    for name, needs_pyhanko, produce, written_size in DERIVED_FIXTURES:
+        manifest[name] = manifest_entry(flat(portrait(written_size)))
         if skip_signed if needs_pyhanko else skip_pdfa:
             continue
         with tempfile.TemporaryDirectory() as tmp:

@@ -15,7 +15,7 @@ Hexagonal architecture (ports and adapters):
 |---|---|---|
 | Domain | Pure rules, no external dependencies, unit tested | Bézier smoothing, width from pressure or speed, screen → PDF coordinate conversion |
 | Application | Use case orchestration | Open a document, place the signature box, sign, save a copy |
-| Ports | Interfaces to the outside world | `IPdfRenderer`, `IPdfWriter`, `IInputSource` |
+| Ports | Interfaces to the outside world | `IPdfRenderer`, `IPdfInspector`, `IPdfWriter`, `IInputSource` |
 | Adapters | Stack-specific implementations | PDF library, pointer API, file system |
 | UI | Display and interaction, no business logic | Screens, controls, shortcuts |
 
